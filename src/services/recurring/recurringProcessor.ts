@@ -1,6 +1,7 @@
 import type { RecurringItem, CreateTransactionInput } from '@/types/models';
 import * as recurringRepo from '@/services/indexeddb/repositories/recurringItemRepository';
 import * as transactionRepo from '@/services/indexeddb/repositories/transactionRepository';
+import * as accountRepo from '@/services/indexeddb/repositories/accountRepository';
 import { toISODateString, addDays, addMonths, addYears, getStartOfDay } from '@/utils/date';
 
 export interface ProcessResult {
@@ -157,6 +158,24 @@ function getNextDueDate(item: RecurringItem, afterDate: Date): Date {
 }
 
 /**
+ * Calculate the balance adjustment for an account based on transaction type.
+ * Income adds to balance, expense subtracts from balance.
+ */
+function calculateBalanceAdjustment(
+  type: 'income' | 'expense' | 'transfer',
+  amount: number
+): number {
+  switch (type) {
+    case 'income':
+      return amount;
+    case 'expense':
+      return -amount;
+    default:
+      return 0;
+  }
+}
+
+/**
  * Create a transaction from a recurring item.
  */
 async function createTransactionFromRecurring(
@@ -177,6 +196,14 @@ async function createTransactionFromRecurring(
 
   try {
     await transactionRepo.createTransaction(input);
+
+    // Update account balance
+    const account = await accountRepo.getAccountById(item.accountId);
+    if (account) {
+      const adjustment = calculateBalanceAdjustment(item.type, item.amount);
+      await accountRepo.updateAccountBalance(item.accountId, account.balance + adjustment);
+    }
+
     return true;
   } catch (e) {
     console.error('Failed to create transaction from recurring:', e);

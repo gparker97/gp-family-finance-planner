@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useGoalsStore } from '@/stores/goalsStore';
 import { useFamilyStore } from '@/stores/familyStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { BaseCard, BaseButton, BaseInput, BaseSelect, BaseModal } from '@/components/ui';
 import CurrencyAmount from '@/components/common/CurrencyAmount.vue';
 import { CURRENCIES } from '@/constants/currencies';
-import type { CreateGoalInput, GoalType, GoalPriority } from '@/types/models';
+import type { Goal, CreateGoalInput, UpdateGoalInput, GoalType, GoalPriority } from '@/types/models';
 
 const goalsStore = useGoalsStore();
 const familyStore = useFamilyStore();
 const settingsStore = useSettingsStore();
 
 const showAddModal = ref(false);
+const showEditModal = ref(false);
+const editingGoal = ref<Goal | null>(null);
 const isSubmitting = ref(false);
 
 const goalTypes: { value: GoalType; label: string }[] = [
@@ -34,25 +36,85 @@ const currencyOptions = CURRENCIES.map((c) => ({
   label: `${c.code} - ${c.name}`,
 }));
 
-const newGoal = ref<CreateGoalInput>({
-  memberId: familyStore.currentMemberId || undefined,
+const memberOptions = computed(() => [
+  { value: '', label: 'Family-wide goal' },
+  ...familyStore.members.map((m) => ({ value: m.id, label: m.name })),
+]);
+
+// Form data for adding - use string type for memberId to work with BaseSelect
+interface NewGoalForm {
+  memberId: string;
+  name: string;
+  type: GoalType;
+  targetAmount: number;
+  currentAmount: number;
+  currency: string;
+  deadline: string;
+  priority: GoalPriority;
+  isCompleted: boolean;
+}
+
+const newGoal = ref<NewGoalForm>({
+  memberId: familyStore.currentMemberId || '',
   name: '',
   type: 'savings',
   targetAmount: 0,
   currentAmount: 0,
   currency: settingsStore.baseCurrency,
+  deadline: '',
   priority: 'medium',
   isCompleted: false,
 });
 
+// Form data for editing - all required fields with defaults
+interface EditGoalForm {
+  id: string;
+  memberId: string;
+  name: string;
+  type: GoalType;
+  targetAmount: number;
+  currentAmount: number;
+  currency: string;
+  deadline: string;
+  priority: GoalPriority;
+  isCompleted: boolean;
+  notes?: string;
+}
+
+const editGoal = ref<EditGoalForm>({
+  id: '',
+  memberId: '',
+  name: '',
+  type: 'savings',
+  targetAmount: 0,
+  currentAmount: 0,
+  currency: settingsStore.baseCurrency,
+  deadline: '',
+  priority: 'medium',
+  isCompleted: false,
+});
+
+function getMemberName(memberId?: string): string {
+  if (!memberId) return 'Family';
+  const member = familyStore.members.find((m) => m.id === memberId);
+  return member?.name || 'Unknown';
+}
+
+function getMemberColor(memberId?: string): string {
+  if (!memberId) return '#3b82f6'; // Blue for family-wide
+  const member = familyStore.members.find((m) => m.id === memberId);
+  return member?.color || '#6b7280';
+}
+
 function openAddModal() {
   newGoal.value = {
-    memberId: familyStore.currentMemberId || undefined,
+    memberId: familyStore.currentMemberId || '',
     name: '',
     type: 'savings',
     targetAmount: 0,
     currentAmount: 0,
     currency: settingsStore.baseCurrency,
+    deadline: '',
     priority: 'medium',
     isCompleted: false,
   };
@@ -64,8 +126,56 @@ async function createGoal() {
 
   isSubmitting.value = true;
   try {
-    await goalsStore.createGoal(newGoal.value);
+    // Convert form data to API input
+    const input: CreateGoalInput = {
+      ...newGoal.value,
+      memberId: newGoal.value.memberId === '' ? undefined : newGoal.value.memberId,
+      deadline: newGoal.value.deadline === '' ? undefined : newGoal.value.deadline,
+    };
+    await goalsStore.createGoal(input);
     showAddModal.value = false;
+  } finally {
+    isSubmitting.value = false;
+  }
+}
+
+function openEditModal(goal: Goal) {
+  editingGoal.value = goal;
+  editGoal.value = {
+    id: goal.id,
+    memberId: goal.memberId || '',
+    name: goal.name,
+    type: goal.type,
+    targetAmount: goal.targetAmount,
+    currentAmount: goal.currentAmount,
+    currency: goal.currency,
+    deadline: goal.deadline?.split('T')[0] || '',
+    priority: goal.priority,
+    isCompleted: goal.isCompleted,
+    notes: goal.notes,
+  };
+  showEditModal.value = true;
+}
+
+function closeEditModal() {
+  showEditModal.value = false;
+  editingGoal.value = null;
+}
+
+async function updateGoal() {
+  if (!editGoal.value.name?.trim()) return;
+
+  isSubmitting.value = true;
+  try {
+    const { id, ...formData } = editGoal.value;
+    // Convert empty string memberId to undefined for the API
+    const input: UpdateGoalInput = {
+      ...formData,
+      memberId: formData.memberId === '' ? undefined : formData.memberId,
+      deadline: formData.deadline === '' ? undefined : formData.deadline,
+    };
+    await goalsStore.updateGoal(id, input);
+    closeEditModal();
   } finally {
     isSubmitting.value = false;
   }
@@ -129,15 +239,34 @@ async function deleteGoal(id: string) {
                 {{ goalTypes.find(t => t.value === goal.type)?.label }} -
                 {{ priorityOptions.find(p => p.value === goal.priority)?.label }} priority
               </p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1 mt-0.5">
+                <span
+                  class="w-2.5 h-2.5 rounded-full inline-block"
+                  :style="{ backgroundColor: getMemberColor(goal.memberId) }"
+                />
+                {{ getMemberName(goal.memberId) }}
+              </p>
             </div>
-            <button
-              class="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
-              @click="deleteGoal(goal.id)"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
+            <div class="flex gap-1">
+              <button
+                class="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
+                title="Edit"
+                @click="openEditModal(goal)"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button
+                class="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
+                title="Delete"
+                @click="deleteGoal(goal.id)"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
           </div>
           <div class="flex items-center justify-between text-sm mb-2">
             <span class="text-gray-500 dark:text-gray-400">Progress</span>
@@ -205,6 +334,18 @@ async function deleteGoal(id: string) {
           :options="priorityOptions"
           label="Priority"
         />
+
+        <BaseSelect
+          v-model="newGoal.memberId"
+          :options="memberOptions"
+          label="Assign to"
+        />
+
+        <BaseInput
+          v-model="newGoal.deadline"
+          type="date"
+          label="Deadline (Optional)"
+        />
       </form>
 
       <template #footer>
@@ -214,6 +355,91 @@ async function deleteGoal(id: string) {
           </BaseButton>
           <BaseButton :loading="isSubmitting" @click="createGoal">
             Add Goal
+          </BaseButton>
+        </div>
+      </template>
+    </BaseModal>
+
+    <!-- Edit Goal Modal -->
+    <BaseModal
+      :open="showEditModal"
+      title="Edit Goal"
+      @close="closeEditModal"
+    >
+      <form class="space-y-4" @submit.prevent="updateGoal">
+        <BaseInput
+          v-model="editGoal.name"
+          label="Goal Name"
+          placeholder="e.g., Emergency Fund"
+          required
+        />
+
+        <BaseSelect
+          v-model="editGoal.type"
+          :options="goalTypes"
+          label="Goal Type"
+        />
+
+        <div class="grid grid-cols-2 gap-4">
+          <BaseInput
+            v-model="editGoal.targetAmount"
+            type="number"
+            label="Target Amount"
+            placeholder="0.00"
+          />
+
+          <BaseSelect
+            v-model="editGoal.currency"
+            :options="currencyOptions"
+            label="Currency"
+          />
+        </div>
+
+        <BaseInput
+          v-model="editGoal.currentAmount"
+          type="number"
+          label="Current Amount"
+          placeholder="0.00"
+        />
+
+        <BaseSelect
+          v-model="editGoal.priority"
+          :options="priorityOptions"
+          label="Priority"
+        />
+
+        <BaseSelect
+          v-model="editGoal.memberId"
+          :options="memberOptions"
+          label="Assign to"
+        />
+
+        <BaseInput
+          v-model="editGoal.deadline"
+          type="date"
+          label="Deadline (Optional)"
+        />
+
+        <div class="flex items-center gap-2">
+          <input
+            id="isCompleted"
+            v-model="editGoal.isCompleted"
+            type="checkbox"
+            class="rounded border-gray-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+          />
+          <label for="isCompleted" class="text-sm text-gray-700 dark:text-gray-300">
+            Mark as completed
+          </label>
+        </div>
+      </form>
+
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <BaseButton variant="secondary" @click="closeEditModal">
+            Cancel
+          </BaseButton>
+          <BaseButton :loading="isSubmitting" @click="updateGoal">
+            Save Changes
           </BaseButton>
         </div>
       </template>

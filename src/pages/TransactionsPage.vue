@@ -4,6 +4,7 @@ import { useTransactionsStore } from '@/stores/transactionsStore';
 import { useAccountsStore } from '@/stores/accountsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useRecurringStore } from '@/stores/recurringStore';
+import { useFamilyStore } from '@/stores/familyStore';
 import { BaseCard, BaseButton, BaseInput, BaseSelect, BaseModal } from '@/components/ui';
 import RecurringItemForm from '@/components/recurring/RecurringItemForm.vue';
 import CurrencyAmount from '@/components/common/CurrencyAmount.vue';
@@ -12,12 +13,13 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, getCategoryById } from '@/consta
 import { CURRENCIES } from '@/constants/currencies';
 import { formatDate, toISODateString } from '@/utils/date';
 import { formatFrequency, getNextDueDateForItem } from '@/services/recurring/recurringProcessor';
-import type { CreateTransactionInput, TransactionType, RecurringItem, CreateRecurringItemInput } from '@/types/models';
+import type { Transaction, CreateTransactionInput, UpdateTransactionInput, TransactionType, RecurringItem, CreateRecurringItemInput } from '@/types/models';
 
 const transactionsStore = useTransactionsStore();
 const accountsStore = useAccountsStore();
 const settingsStore = useSettingsStore();
 const recurringStore = useRecurringStore();
+const familyStore = useFamilyStore();
 const { formatInDisplayCurrency } = useCurrencyDisplay();
 
 // Tab state
@@ -25,6 +27,8 @@ const activeTab = ref<'transactions' | 'recurring'>('transactions');
 
 // Transaction modal state
 const showAddModal = ref(false);
+const showEditModal = ref(false);
+const editingTransaction = ref<Transaction | null>(null);
 const isSubmitting = ref(false);
 
 // Recurring modal state
@@ -47,12 +51,43 @@ const categoryOptions = computed(() => {
   return categories.map((c) => ({ value: c.id, label: c.name }));
 });
 
+const editCategoryOptions = computed(() => {
+  const categories = editTransaction.value.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  return categories.map((c) => ({ value: c.id, label: c.name }));
+});
+
 const currencyOptions = CURRENCIES.map((c) => ({
   value: c.code,
   label: `${c.code} - ${c.name}`,
 }));
 
 const newTransaction = ref<CreateTransactionInput>({
+  accountId: '',
+  type: 'expense',
+  amount: 0,
+  currency: settingsStore.baseCurrency,
+  category: '',
+  date: toISODateString(new Date()),
+  description: '',
+  isReconciled: false,
+});
+
+// Form data for editing - all fields are required with defaults
+interface EditTransactionForm {
+  id: string;
+  accountId: string;
+  toAccountId?: string;
+  type: TransactionType;
+  amount: number;
+  currency: string;
+  category: string;
+  date: string;
+  description: string;
+  isReconciled: boolean;
+}
+
+const editTransaction = ref<EditTransactionForm>({
+  id: '',
   accountId: '',
   type: 'expense',
   amount: 0,
@@ -81,6 +116,20 @@ function getCategoryName(categoryId: string): string {
   return category?.name || categoryId;
 }
 
+function getMemberNameByAccountId(accountId: string): string {
+  const account = accountsStore.accounts.find((a) => a.id === accountId);
+  if (!account) return 'Unknown';
+  const member = familyStore.members.find((m) => m.id === account.memberId);
+  return member?.name || 'Unknown';
+}
+
+function getMemberColorByAccountId(accountId: string): string {
+  const account = accountsStore.accounts.find((a) => a.id === accountId);
+  if (!account) return '#6b7280';
+  const member = familyStore.members.find((m) => m.id === account.memberId);
+  return member?.color || '#6b7280';
+}
+
 // Transaction functions
 function openAddModal() {
   newTransaction.value = {
@@ -103,6 +152,41 @@ async function createTransaction() {
   try {
     await transactionsStore.createTransaction(newTransaction.value);
     showAddModal.value = false;
+  } finally {
+    isSubmitting.value = false;
+  }
+}
+
+function openEditModal(transaction: Transaction) {
+  editingTransaction.value = transaction;
+  editTransaction.value = {
+    id: transaction.id,
+    accountId: transaction.accountId,
+    toAccountId: transaction.toAccountId,
+    type: transaction.type,
+    amount: transaction.amount,
+    currency: transaction.currency,
+    category: transaction.category,
+    date: transaction.date.split('T')[0] || transaction.date,
+    description: transaction.description,
+    isReconciled: transaction.isReconciled,
+  };
+  showEditModal.value = true;
+}
+
+function closeEditModal() {
+  showEditModal.value = false;
+  editingTransaction.value = null;
+}
+
+async function updateTransaction() {
+  if (!editTransaction.value.description?.trim() || !editTransaction.value.accountId) return;
+
+  isSubmitting.value = true;
+  try {
+    const { id, ...input } = editTransaction.value;
+    await transactionsStore.updateTransaction(id, input as UpdateTransactionInput);
+    closeEditModal();
   } finally {
     isSubmitting.value = false;
   }
@@ -309,7 +393,14 @@ function formatNextDate(item: RecurringItem): string {
                   </span>
                 </p>
                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ getCategoryName(transaction.category) }} - {{ formatDate(transaction.date) }}
+                  {{ getCategoryName(transaction.category) }} - {{ getAccountName(transaction.accountId) }} - {{ formatDate(transaction.date) }}
+                </p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1 mt-0.5">
+                  <span
+                    class="w-2.5 h-2.5 rounded-full inline-block"
+                    :style="{ backgroundColor: getMemberColorByAccountId(transaction.accountId) }"
+                  />
+                  {{ getMemberNameByAccountId(transaction.accountId) }}
                 </p>
               </div>
             </div>
@@ -320,14 +411,26 @@ function formatNextDate(item: RecurringItem): string {
                 :type="transaction.type === 'income' ? 'income' : 'expense'"
                 size="lg"
               />
-              <button
-                class="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
-                @click="deleteTransaction(transaction.id)"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
+              <div class="flex gap-1">
+                <button
+                  class="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
+                  title="Edit"
+                  @click="openEditModal(transaction)"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+                <button
+                  class="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700"
+                  title="Delete"
+                  @click="deleteTransaction(transaction.id)"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -535,6 +638,73 @@ function formatNextDate(item: RecurringItem): string {
           </BaseButton>
           <BaseButton :loading="isSubmitting" @click="createTransaction">
             Add Transaction
+          </BaseButton>
+        </div>
+      </template>
+    </BaseModal>
+
+    <!-- Edit Transaction Modal -->
+    <BaseModal
+      :open="showEditModal"
+      title="Edit Transaction"
+      @close="closeEditModal"
+    >
+      <form class="space-y-4" @submit.prevent="updateTransaction">
+        <BaseSelect
+          v-model="editTransaction.type"
+          :options="transactionTypes"
+          label="Type"
+        />
+
+        <BaseSelect
+          v-model="editTransaction.accountId"
+          :options="accountOptions"
+          label="Account"
+          placeholder="Select an account"
+        />
+
+        <BaseInput
+          v-model="editTransaction.description"
+          label="Description"
+          placeholder="e.g., Grocery shopping"
+          required
+        />
+
+        <BaseSelect
+          v-model="editTransaction.category"
+          :options="editCategoryOptions"
+          label="Category"
+        />
+
+        <div class="grid grid-cols-2 gap-4">
+          <BaseInput
+            v-model="editTransaction.amount"
+            type="number"
+            label="Amount"
+            placeholder="0.00"
+          />
+
+          <BaseSelect
+            v-model="editTransaction.currency"
+            :options="currencyOptions"
+            label="Currency"
+          />
+        </div>
+
+        <BaseInput
+          v-model="editTransaction.date"
+          type="date"
+          label="Date"
+        />
+      </form>
+
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <BaseButton variant="secondary" @click="closeEditModal">
+            Cancel
+          </BaseButton>
+          <BaseButton :loading="isSubmitting" @click="updateTransaction">
+            Save Changes
           </BaseButton>
         </div>
       </template>

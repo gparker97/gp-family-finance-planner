@@ -8,6 +8,7 @@ import type {
 } from '@/types/models';
 import * as transactionRepo from '@/services/indexeddb/repositories/transactionRepository';
 import { getStartOfMonth, getEndOfMonth, toISODateString, isDateBetween } from '@/utils/date';
+import { useAccountsStore } from '@/stores/accountsStore';
 
 export const useTransactionsStore = defineStore('transactions', () => {
   // State
@@ -54,6 +55,43 @@ export const useTransactionsStore = defineStore('transactions', () => {
     return categoryTotals;
   });
 
+  /**
+   * Calculate the balance adjustment for an account based on transaction type.
+   * Income adds to balance, expense subtracts from balance.
+   * For transfers: source account is debited, destination account is credited.
+   */
+  function calculateBalanceAdjustment(
+    type: 'income' | 'expense' | 'transfer',
+    amount: number,
+    isSourceAccount: boolean = true
+  ): number {
+    switch (type) {
+      case 'income':
+        return amount;
+      case 'expense':
+        return -amount;
+      case 'transfer':
+        return isSourceAccount ? -amount : amount;
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * Update account balance in both store and database.
+   */
+  async function adjustAccountBalance(
+    accountId: string,
+    adjustment: number
+  ): Promise<void> {
+    const accountsStore = useAccountsStore();
+    const account = accountsStore.getAccountById(accountId);
+    if (account) {
+      const newBalance = account.balance + adjustment;
+      await accountsStore.updateAccount(accountId, { balance: newBalance });
+    }
+  }
+
   // Actions
   async function loadTransactions() {
     isLoading.value = true;
@@ -73,6 +111,17 @@ export const useTransactionsStore = defineStore('transactions', () => {
     try {
       const transaction = await transactionRepo.createTransaction(input);
       transactions.value.push(transaction);
+
+      // Update account balance
+      const adjustment = calculateBalanceAdjustment(input.type, input.amount, true);
+      await adjustAccountBalance(input.accountId, adjustment);
+
+      // For transfers, also update destination account
+      if (input.type === 'transfer' && input.toAccountId) {
+        const destAdjustment = calculateBalanceAdjustment(input.type, input.amount, false);
+        await adjustAccountBalance(input.toAccountId, destAdjustment);
+      }
+
       return transaction;
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to create transaction';
@@ -89,11 +138,42 @@ export const useTransactionsStore = defineStore('transactions', () => {
     isLoading.value = true;
     error.value = null;
     try {
+      // Get the original transaction to calculate balance adjustments
+      const original = transactions.value.find((t) => t.id === id);
+
       const updated = await transactionRepo.updateTransaction(id, input);
       if (updated) {
         const index = transactions.value.findIndex((t) => t.id === id);
         if (index !== -1) {
           transactions.value[index] = updated;
+        }
+
+        // If amount, type, or account changed, adjust balances
+        if (original) {
+          // Reverse the original transaction's effect
+          const originalAdjustment = calculateBalanceAdjustment(original.type, original.amount, true);
+          await adjustAccountBalance(original.accountId, -originalAdjustment);
+
+          // If it was a transfer, also reverse destination
+          if (original.type === 'transfer' && original.toAccountId) {
+            const originalDestAdjustment = calculateBalanceAdjustment(original.type, original.amount, false);
+            await adjustAccountBalance(original.toAccountId, -originalDestAdjustment);
+          }
+
+          // Apply the new transaction's effect
+          const newType = input.type ?? original.type;
+          const newAmount = input.amount ?? original.amount;
+          const newAccountId = input.accountId ?? original.accountId;
+          const newToAccountId = input.toAccountId ?? original.toAccountId;
+
+          const newAdjustment = calculateBalanceAdjustment(newType, newAmount, true);
+          await adjustAccountBalance(newAccountId, newAdjustment);
+
+          // For transfers, also update destination
+          if (newType === 'transfer' && newToAccountId) {
+            const newDestAdjustment = calculateBalanceAdjustment(newType, newAmount, false);
+            await adjustAccountBalance(newToAccountId, newDestAdjustment);
+          }
         }
       }
       return updated ?? null;
@@ -109,9 +189,24 @@ export const useTransactionsStore = defineStore('transactions', () => {
     isLoading.value = true;
     error.value = null;
     try {
+      // Get the transaction before deleting to reverse balance
+      const transaction = transactions.value.find((t) => t.id === id);
+
       const success = await transactionRepo.deleteTransaction(id);
       if (success) {
         transactions.value = transactions.value.filter((t) => t.id !== id);
+
+        // Reverse the transaction's effect on account balance
+        if (transaction) {
+          const adjustment = calculateBalanceAdjustment(transaction.type, transaction.amount, true);
+          await adjustAccountBalance(transaction.accountId, -adjustment);
+
+          // For transfers, also reverse destination
+          if (transaction.type === 'transfer' && transaction.toAccountId) {
+            const destAdjustment = calculateBalanceAdjustment(transaction.type, transaction.amount, false);
+            await adjustAccountBalance(transaction.toAccountId, -destAdjustment);
+          }
+        }
       }
       return success;
     } catch (e) {
