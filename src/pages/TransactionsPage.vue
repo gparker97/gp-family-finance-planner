@@ -56,10 +56,19 @@ const editCategoryOptions = computed(() => {
   return categories.map((c) => ({ value: c.id, label: c.name }));
 });
 
-const currencyOptions = CURRENCIES.map((c) => ({
-  value: c.code,
-  label: `${c.code} - ${c.name}`,
-}));
+// Currency options with display currency at the top
+const currencyOptions = computed(() => {
+  const displayCurrency = settingsStore.displayCurrency;
+  const sortedCurrencies = [...CURRENCIES].sort((a, b) => {
+    if (a.code === displayCurrency) return -1;
+    if (b.code === displayCurrency) return 1;
+    return 0;
+  });
+  return sortedCurrencies.map((c) => ({
+    value: c.code,
+    label: `${c.code} - ${c.name}`,
+  }));
+});
 
 const newTransaction = ref<CreateTransactionInput>({
   accountId: '',
@@ -300,29 +309,57 @@ function formatNextDate(item: RecurringItem): string {
 
     <!-- Transactions Tab -->
     <template v-if="activeTab === 'transactions'">
-      <!-- Summary -->
+      <!-- Summary Cards with Gradients -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <BaseCard>
-          <p class="text-sm text-gray-500 dark:text-gray-400">This Month Income</p>
-          <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
-            {{ formatTotal(transactionsStore.thisMonthIncome) }}
-          </p>
-        </BaseCard>
-        <BaseCard>
-          <p class="text-sm text-gray-500 dark:text-gray-400">This Month Expenses</p>
-          <p class="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
-            {{ formatTotal(transactionsStore.thisMonthExpenses) }}
-          </p>
-        </BaseCard>
-        <BaseCard>
-          <p class="text-sm text-gray-500 dark:text-gray-400">Net Cash Flow</p>
-          <p
-            class="text-2xl font-bold mt-1"
-            :class="transactionsStore.thisMonthNetCashFlow >= 0 ? 'text-green-600' : 'text-red-600'"
-          >
-            {{ formatTotal(transactionsStore.thisMonthNetCashFlow) }}
-          </p>
-        </BaseCard>
+        <!-- This Month Income -->
+        <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-5 text-white shadow-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-green-100 text-sm font-medium">This Month Income</p>
+              <p class="text-2xl font-bold mt-1">{{ formatTotal(transactionsStore.thisMonthIncome) }}</p>
+            </div>
+            <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- This Month Expenses -->
+        <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-xl p-5 text-white shadow-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-red-100 text-sm font-medium">This Month Expenses</p>
+              <p class="text-2xl font-bold mt-1">{{ formatTotal(transactionsStore.thisMonthExpenses) }}</p>
+            </div>
+            <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Net Cash Flow -->
+        <div
+          class="rounded-xl p-5 text-white shadow-lg"
+          :class="transactionsStore.thisMonthNetCashFlow >= 0
+            ? 'bg-gradient-to-br from-blue-500 to-indigo-600'
+            : 'bg-gradient-to-br from-orange-500 to-amber-600'"
+        >
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium" :class="transactionsStore.thisMonthNetCashFlow >= 0 ? 'text-blue-100' : 'text-orange-100'">Net Cash Flow</p>
+              <p class="text-2xl font-bold mt-1">{{ formatTotal(transactionsStore.thisMonthNetCashFlow) }}</p>
+            </div>
+            <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Transactions List -->
@@ -396,10 +433,9 @@ function formatNextDate(item: RecurringItem): string {
                   {{ getCategoryName(transaction.category) }} - {{ getAccountName(transaction.accountId) }} - {{ formatDate(transaction.date) }}
                 </p>
                 <p class="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1 mt-0.5">
-                  <span
-                    class="w-2.5 h-2.5 rounded-full inline-block"
-                    :style="{ backgroundColor: getMemberColorByAccountId(transaction.accountId) }"
-                  />
+                  <svg class="w-3.5 h-3.5" :style="{ color: getMemberColorByAccountId(transaction.accountId) }" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                  </svg>
                   {{ getMemberNameByAccountId(transaction.accountId) }}
                 </p>
               </div>
@@ -439,29 +475,57 @@ function formatNextDate(item: RecurringItem): string {
 
     <!-- Recurring Tab -->
     <template v-else>
-      <!-- Recurring Summary -->
+      <!-- Recurring Summary with Gradients -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <BaseCard>
-          <p class="text-sm text-gray-500 dark:text-gray-400">Monthly Recurring Income</p>
-          <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
-            {{ formatTotal(recurringStore.totalMonthlyRecurringIncome) }}
-          </p>
-        </BaseCard>
-        <BaseCard>
-          <p class="text-sm text-gray-500 dark:text-gray-400">Monthly Recurring Expenses</p>
-          <p class="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
-            {{ formatTotal(recurringStore.totalMonthlyRecurringExpenses) }}
-          </p>
-        </BaseCard>
-        <BaseCard>
-          <p class="text-sm text-gray-500 dark:text-gray-400">Net Monthly Recurring</p>
-          <p
-            class="text-2xl font-bold mt-1"
-            :class="recurringStore.netMonthlyRecurring >= 0 ? 'text-green-600' : 'text-red-600'"
-          >
-            {{ formatTotal(recurringStore.netMonthlyRecurring) }}
-          </p>
-        </BaseCard>
+        <!-- Monthly Recurring Income -->
+        <div class="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-5 text-white shadow-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-green-100 text-sm font-medium">Monthly Recurring Income</p>
+              <p class="text-2xl font-bold mt-1">{{ formatTotal(recurringStore.totalMonthlyRecurringIncome) }}</p>
+            </div>
+            <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Monthly Recurring Expenses -->
+        <div class="bg-gradient-to-br from-red-500 to-rose-600 rounded-xl p-5 text-white shadow-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-red-100 text-sm font-medium">Monthly Recurring Expenses</p>
+              <p class="text-2xl font-bold mt-1">{{ formatTotal(recurringStore.totalMonthlyRecurringExpenses) }}</p>
+            </div>
+            <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Net Monthly Recurring -->
+        <div
+          class="rounded-xl p-5 text-white shadow-lg"
+          :class="recurringStore.netMonthlyRecurring >= 0
+            ? 'bg-gradient-to-br from-blue-500 to-indigo-600'
+            : 'bg-gradient-to-br from-orange-500 to-amber-600'"
+        >
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium" :class="recurringStore.netMonthlyRecurring >= 0 ? 'text-blue-100' : 'text-orange-100'">Net Monthly Recurring</p>
+              <p class="text-2xl font-bold mt-1">{{ formatTotal(recurringStore.netMonthlyRecurring) }}</p>
+            </div>
+            <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Recurring Items List -->
@@ -523,6 +587,12 @@ function formatNextDate(item: RecurringItem): string {
                   </p>
                   <p class="text-sm text-gray-500 dark:text-gray-400">
                     {{ getCategoryName(item.category) }} - {{ getAccountName(item.accountId) }}
+                  </p>
+                  <p class="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1 mt-0.5">
+                    <svg class="w-3.5 h-3.5" :style="{ color: getMemberColorByAccountId(item.accountId) }" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    </svg>
+                    {{ getMemberNameByAccountId(item.accountId) }}
                   </p>
                   <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
                     {{ formatFrequency(item) }} - Next: {{ formatNextDate(item) }}
