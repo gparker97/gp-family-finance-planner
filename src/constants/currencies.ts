@@ -33,6 +33,8 @@ export const CURRENCIES: CurrencyInfo[] = [
 
 export const DEFAULT_CURRENCY: CurrencyCode = 'USD';
 
+export const SUPPORTED_CURRENCY_CODES: CurrencyCode[] = CURRENCIES.map(c => c.code);
+
 export function getCurrencyInfo(code: CurrencyCode): CurrencyInfo | undefined {
   return CURRENCIES.find(c => c.code === code);
 }

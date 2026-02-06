@@ -4,6 +4,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useSyncStore } from '@/stores/syncStore';
 import { BaseCard, BaseSelect, BaseButton } from '@/components/ui';
 import PasswordModal from '@/components/common/PasswordModal.vue';
+import ExchangeRateSettings from '@/components/settings/ExchangeRateSettings.vue';
 import { CURRENCIES } from '@/constants/currencies';
 import { clearAllData } from '@/services/indexeddb/database';
 
@@ -201,6 +202,9 @@ function formatLastSync(timestamp: string | null): string {
         />
       </div>
     </BaseCard>
+
+    <!-- Exchange Rate Settings -->
+    <ExchangeRateSettings />
 
     <!-- File Sync Settings -->
     <BaseCard title="File Sync">

@@ -10,6 +10,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useSyncStore } from '@/stores/syncStore';
 import { useRecurringStore } from '@/stores/recurringStore';
 import { processRecurringItems } from '@/services/recurring/recurringProcessor';
+import { updateRatesIfStale } from '@/services/exchangeRate';
 import AppSidebar from '@/components/common/AppSidebar.vue';
 import AppHeader from '@/components/common/AppHeader.vue';
 
@@ -32,6 +33,11 @@ const showLayout = computed(() => {
 onMounted(async () => {
   // Load settings first
   await settingsStore.loadSettings();
+
+  // Auto-update exchange rates if enabled (non-blocking)
+  if (settingsStore.settings.exchangeRateAutoUpdate) {
+    updateRatesIfStale().catch(console.error);
+  }
 
   // Initialize sync service (restores file handle if configured)
   await syncStore.initialize();

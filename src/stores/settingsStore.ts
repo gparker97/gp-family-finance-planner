@@ -15,6 +15,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const syncEnabled = computed(() => settings.value.syncEnabled);
   const aiProvider = computed(() => settings.value.aiProvider);
   const exchangeRates = computed(() => settings.value.exchangeRates);
+  const exchangeRateAutoUpdate = computed(() => settings.value.exchangeRateAutoUpdate);
+  const exchangeRateLastFetch = computed(() => settings.value.exchangeRateLastFetch);
 
   // Apply theme to document
   watch(
@@ -125,6 +127,30 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  async function setExchangeRateAutoUpdate(enabled: boolean): Promise<void> {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      settings.value = await settingsRepo.setExchangeRateAutoUpdate(enabled);
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to update exchange rate auto-update setting';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  async function updateExchangeRates(rates: ExchangeRate[]): Promise<void> {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      settings.value = await settingsRepo.updateExchangeRates(rates);
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to update exchange rates';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   async function addExchangeRate(rate: ExchangeRate): Promise<void> {
     isLoading.value = true;
     error.value = null;
@@ -168,6 +194,8 @@ export const useSettingsStore = defineStore('settings', () => {
     syncEnabled,
     aiProvider,
     exchangeRates,
+    exchangeRateAutoUpdate,
+    exchangeRateLastFetch,
     // Actions
     loadSettings,
     setBaseCurrency,
@@ -176,6 +204,8 @@ export const useSettingsStore = defineStore('settings', () => {
     setAutoSyncEnabled,
     setAIProvider,
     setAIApiKey,
+    setExchangeRateAutoUpdate,
+    updateExchangeRates,
     addExchangeRate,
     removeExchangeRate,
     convertAmount,

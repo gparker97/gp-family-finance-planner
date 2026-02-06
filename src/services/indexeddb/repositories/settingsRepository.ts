@@ -11,6 +11,8 @@ export function getDefaultSettings(): Settings {
     id: SETTINGS_ID,
     baseCurrency: DEFAULT_CURRENCY,
     exchangeRates: [],
+    exchangeRateAutoUpdate: true,
+    exchangeRateLastFetch: null,
     theme: 'system',
     syncEnabled: false,
     autoSyncEnabled: true,
@@ -70,6 +72,37 @@ export async function setAIApiKey(
   const settings = await getSettings();
   const aiApiKeys = { ...settings.aiApiKeys, [provider]: key };
   return saveSettings({ aiApiKeys });
+}
+
+export async function setExchangeRateAutoUpdate(enabled: boolean): Promise<Settings> {
+  return saveSettings({ exchangeRateAutoUpdate: enabled });
+}
+
+export async function setExchangeRateLastFetch(timestamp: string | null): Promise<Settings> {
+  return saveSettings({ exchangeRateLastFetch: timestamp });
+}
+
+export async function updateExchangeRates(rates: ExchangeRate[]): Promise<Settings> {
+  const settings = await getSettings();
+  const now = toISODateString(new Date());
+
+  // Merge new rates with existing, replacing duplicates
+  const rateMap = new Map<string, ExchangeRate>();
+
+  // Add existing rates
+  for (const rate of settings.exchangeRates) {
+    rateMap.set(`${rate.from}-${rate.to}`, rate);
+  }
+
+  // Add/replace with new rates
+  for (const rate of rates) {
+    rateMap.set(`${rate.from}-${rate.to}`, rate);
+  }
+
+  return saveSettings({
+    exchangeRates: Array.from(rateMap.values()),
+    exchangeRateLastFetch: now,
+  });
 }
 
 export async function addExchangeRate(rate: ExchangeRate): Promise<Settings> {
