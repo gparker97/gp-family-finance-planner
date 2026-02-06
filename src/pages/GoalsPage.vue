@@ -5,6 +5,7 @@ import { useFamilyStore } from '@/stores/familyStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { BaseCard, BaseButton, BaseInput, BaseSelect, BaseModal } from '@/components/ui';
 import CurrencyAmount from '@/components/common/CurrencyAmount.vue';
+import { CURRENCIES } from '@/constants/currencies';
 import type { CreateGoalInput, GoalType, GoalPriority } from '@/types/models';
 
 const goalsStore = useGoalsStore();
@@ -27,6 +28,11 @@ const priorityOptions: { value: GoalPriority; label: string }[] = [
   { value: 'high', label: 'High' },
   { value: 'critical', label: 'Critical' },
 ];
+
+const currencyOptions = CURRENCIES.map((c) => ({
+  value: c.code,
+  label: `${c.code} - ${c.name}`,
+}));
 
 const newGoal = ref<CreateGoalInput>({
   memberId: familyStore.currentMemberId || undefined,
@@ -172,12 +178,20 @@ async function deleteGoal(id: string) {
           label="Goal Type"
         />
 
-        <BaseInput
-          v-model="newGoal.targetAmount"
-          type="number"
-          label="Target Amount"
-          placeholder="0.00"
-        />
+        <div class="grid grid-cols-2 gap-4">
+          <BaseInput
+            v-model="newGoal.targetAmount"
+            type="number"
+            label="Target Amount"
+            placeholder="0.00"
+          />
+
+          <BaseSelect
+            v-model="newGoal.currency"
+            :options="currencyOptions"
+            label="Currency"
+          />
+        </div>
 
         <BaseInput
           v-model="newGoal.currentAmount"

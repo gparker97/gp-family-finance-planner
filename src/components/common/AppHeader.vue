@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useFamilyStore } from '@/stores/familyStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import SyncStatusIndicator from '@/components/common/SyncStatusIndicator.vue';
-import { CURRENCIES, getCurrencyInfo } from '@/constants/currencies';
+import { DISPLAY_CURRENCIES, getCurrencyInfo } from '@/constants/currencies';
 import type { CurrencyCode } from '@/types/models';
 
 const familyStore = useFamilyStore();
@@ -12,7 +12,7 @@ const settingsStore = useSettingsStore();
 const currentMember = computed(() => familyStore.currentMember);
 const showCurrencyDropdown = ref(false);
 
-const currencyOptions = CURRENCIES.map((c) => ({
+const currencyOptions = DISPLAY_CURRENCIES.map((c) => ({
   code: c.code,
   label: `${c.code} - ${c.symbol}`,
   fullLabel: `${c.code} - ${c.name}`,

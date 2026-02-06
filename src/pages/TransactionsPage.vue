@@ -9,6 +9,7 @@ import RecurringItemForm from '@/components/recurring/RecurringItemForm.vue';
 import CurrencyAmount from '@/components/common/CurrencyAmount.vue';
 import { useCurrencyDisplay } from '@/composables/useCurrencyDisplay';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, getCategoryById } from '@/constants/categories';
+import { CURRENCIES } from '@/constants/currencies';
 import { formatDate, toISODateString } from '@/utils/date';
 import { formatFrequency, getNextDueDateForItem } from '@/services/recurring/recurringProcessor';
 import type { CreateTransactionInput, TransactionType, RecurringItem, CreateRecurringItemInput } from '@/types/models';
@@ -45,6 +46,11 @@ const categoryOptions = computed(() => {
   const categories = newTransaction.value.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
   return categories.map((c) => ({ value: c.id, label: c.name }));
 });
+
+const currencyOptions = CURRENCIES.map((c) => ({
+  value: c.code,
+  label: `${c.code} - ${c.name}`,
+}));
 
 const newTransaction = ref<CreateTransactionInput>({
   accountId: '',
@@ -500,12 +506,20 @@ function formatNextDate(item: RecurringItem): string {
           label="Category"
         />
 
-        <BaseInput
-          v-model="newTransaction.amount"
-          type="number"
-          label="Amount"
-          placeholder="0.00"
-        />
+        <div class="grid grid-cols-2 gap-4">
+          <BaseInput
+            v-model="newTransaction.amount"
+            type="number"
+            label="Amount"
+            placeholder="0.00"
+          />
+
+          <BaseSelect
+            v-model="newTransaction.currency"
+            :options="currencyOptions"
+            label="Currency"
+          />
+        </div>
 
         <BaseInput
           v-model="newTransaction.date"

@@ -4,6 +4,7 @@ import { BaseInput, BaseSelect, BaseButton } from '@/components/ui';
 import { useAccountsStore } from '@/stores/accountsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from '@/constants/categories';
+import { CURRENCIES } from '@/constants/currencies';
 import { toISODateString } from '@/utils/date';
 import type { RecurringItem, CreateRecurringItemInput, RecurringFrequency } from '@/types/models';
 
@@ -65,6 +66,12 @@ const categoryOptions = computed(() => {
     formData.value.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
   return categories.map((c) => ({ value: c.id, label: c.name }));
 });
+
+// Currency options
+const currencyOptions = CURRENCIES.map((c) => ({
+  value: c.code,
+  label: `${c.code} - ${c.name}`,
+}));
 
 // Day of month options (1-28 to avoid month-end issues)
 const dayOfMonthOptions = computed(() =>
@@ -176,13 +183,21 @@ function handleSubmit() {
       label="Category"
     />
 
-    <BaseInput
-      v-model="formData.amount"
-      type="number"
-      label="Amount"
-      placeholder="0.00"
-      required
-    />
+    <div class="grid grid-cols-2 gap-4">
+      <BaseInput
+        v-model="formData.amount"
+        type="number"
+        label="Amount"
+        placeholder="0.00"
+        required
+      />
+
+      <BaseSelect
+        v-model="formData.currency"
+        :options="currencyOptions"
+        label="Currency"
+      />
+    </div>
 
     <BaseSelect
       v-model="formData.frequency"

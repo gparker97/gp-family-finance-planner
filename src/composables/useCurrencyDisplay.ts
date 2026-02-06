@@ -1,7 +1,17 @@
 import { computed } from 'vue';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { formatCurrency } from '@/constants/currencies';
+import { formatCurrency, getCurrencyInfo } from '@/constants/currencies';
 import type { CurrencyCode, ExchangeRate } from '@/types/models';
+
+/**
+ * Format currency with code prefix (e.g., "USD $100.00")
+ */
+function formatCurrencyWithCode(amount: number, currencyCode: CurrencyCode): string {
+  const info = getCurrencyInfo(currencyCode);
+  const formatted = formatCurrency(amount, currencyCode);
+  // Add currency code prefix for clarity
+  return `${currencyCode} ${info?.symbol || ''}${formatted.replace(info?.symbol || '', '').trim()}`;
+}
 
 export interface ConvertedAmount {
   /** The converted amount in display currency */
@@ -89,7 +99,7 @@ export function useCurrencyDisplay() {
     const isConverted = originalCurrency !== targetCurrency;
 
     if (!isConverted) {
-      const formatted = formatCurrency(amount, originalCurrency);
+      const formatted = formatCurrencyWithCode(amount, originalCurrency);
       return {
         displayAmount: amount,
         displayCurrency: targetCurrency,
@@ -106,7 +116,7 @@ export function useCurrencyDisplay() {
 
     if (rate === undefined) {
       // Conversion failed - show original with warning
-      const formatted = formatCurrency(amount, originalCurrency);
+      const formatted = formatCurrencyWithCode(amount, originalCurrency);
       return {
         displayAmount: amount,
         displayCurrency: originalCurrency,
@@ -123,10 +133,10 @@ export function useCurrencyDisplay() {
     return {
       displayAmount: convertedAmount,
       displayCurrency: targetCurrency,
-      displayFormatted: formatCurrency(convertedAmount, targetCurrency),
+      displayFormatted: formatCurrencyWithCode(convertedAmount, targetCurrency),
       originalAmount: amount,
       originalCurrency,
-      originalFormatted: formatCurrency(amount, originalCurrency),
+      originalFormatted: formatCurrencyWithCode(amount, originalCurrency),
       isConverted: true,
       conversionFailed: false,
     };
