@@ -187,3 +187,129 @@ describe('accountsStore', () => {
     });
   });
 });
+
+describe('accountsStore - Summary Card Calculations', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  describe('totalAssets', () => {
+    it('should sum balances of all asset accounts (checking, savings, investment, crypto, cash)', () => {
+      const store = useAccountsStore();
+
+      store.accounts.push(
+        { ...mockAccount, id: 'acc-1', type: 'checking', balance: 5000 },
+        { ...mockAccount, id: 'acc-2', type: 'savings', balance: 10000 },
+        { ...mockAccount, id: 'acc-3', type: 'investment', balance: 25000 },
+        { ...mockAccount, id: 'acc-4', type: 'crypto', balance: 5000 },
+        { ...mockAccount, id: 'acc-5', type: 'cash', balance: 500 }
+      );
+
+      // Total assets: 5000 + 10000 + 25000 + 5000 + 500 = 45500
+      expect(store.totalAssets).toBe(45500);
+    });
+
+    it('should NOT include credit card or loan accounts in assets', () => {
+      const store = useAccountsStore();
+
+      store.accounts.push(
+        { ...mockAccount, id: 'acc-1', type: 'checking', balance: 5000 },
+        { ...mockAccount, id: 'acc-2', type: 'credit_card', balance: 2000 }, // Liability
+        { ...mockAccount, id: 'acc-3', type: 'loan', balance: 50000 } // Liability
+      );
+
+      // Only checking counts as asset
+      expect(store.totalAssets).toBe(5000);
+    });
+
+    it('should only include active accounts', () => {
+      const store = useAccountsStore();
+
+      store.accounts.push(
+        { ...mockAccount, id: 'acc-1', type: 'checking', balance: 5000, isActive: true },
+        { ...mockAccount, id: 'acc-2', type: 'savings', balance: 10000, isActive: false } // Inactive
+      );
+
+      expect(store.totalAssets).toBe(5000);
+    });
+
+    it('should only include accounts marked for net worth', () => {
+      const store = useAccountsStore();
+
+      store.accounts.push(
+        { ...mockAccount, id: 'acc-1', type: 'checking', balance: 5000, includeInNetWorth: true },
+        { ...mockAccount, id: 'acc-2', type: 'savings', balance: 10000, includeInNetWorth: false } // Excluded
+      );
+
+      expect(store.totalAssets).toBe(5000);
+    });
+  });
+
+  describe('totalLiabilities', () => {
+    it('should sum balances of credit card and loan accounts', () => {
+      const store = useAccountsStore();
+
+      store.accounts.push(
+        { ...mockAccount, id: 'acc-1', type: 'credit_card', balance: 2000 },
+        { ...mockAccount, id: 'acc-2', type: 'loan', balance: 50000 }
+      );
+
+      // Total liabilities: 2000 + 50000 = 52000
+      expect(store.totalLiabilities).toBe(52000);
+    });
+
+    it('should NOT include asset accounts in liabilities', () => {
+      const store = useAccountsStore();
+
+      store.accounts.push(
+        { ...mockAccount, id: 'acc-1', type: 'checking', balance: 5000 }, // Asset
+        { ...mockAccount, id: 'acc-2', type: 'credit_card', balance: 2000 }
+      );
+
+      expect(store.totalLiabilities).toBe(2000);
+    });
+
+    it('should only include active liability accounts', () => {
+      const store = useAccountsStore();
+
+      store.accounts.push(
+        { ...mockAccount, id: 'acc-1', type: 'credit_card', balance: 2000, isActive: true },
+        { ...mockAccount, id: 'acc-2', type: 'loan', balance: 50000, isActive: false } // Inactive
+      );
+
+      expect(store.totalLiabilities).toBe(2000);
+    });
+  });
+
+  describe('totalBalance (Net Worth)', () => {
+    it('should be assets minus liabilities', () => {
+      const store = useAccountsStore();
+
+      store.accounts.push(
+        { ...mockAccount, id: 'acc-1', type: 'checking', balance: 10000 },
+        { ...mockAccount, id: 'acc-2', type: 'savings', balance: 20000 },
+        { ...mockAccount, id: 'acc-3', type: 'credit_card', balance: 5000 },
+        { ...mockAccount, id: 'acc-4', type: 'loan', balance: 15000 }
+      );
+
+      // Assets: 10000 + 20000 = 30000
+      // Liabilities: 5000 + 15000 = 20000
+      // Net worth: 30000 - 20000 = 10000
+      expect(store.totalBalance).toBe(10000);
+    });
+
+    it('should be negative when liabilities exceed assets', () => {
+      const store = useAccountsStore();
+
+      store.accounts.push(
+        { ...mockAccount, id: 'acc-1', type: 'checking', balance: 5000 },
+        { ...mockAccount, id: 'acc-2', type: 'loan', balance: 50000 }
+      );
+
+      // Assets: 5000, Liabilities: 50000
+      // Net worth: 5000 - 50000 = -45000
+      expect(store.totalBalance).toBe(-45000);
+    });
+  });
+});

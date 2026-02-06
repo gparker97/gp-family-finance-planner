@@ -320,3 +320,154 @@ describe('transactionsStore - Account Balance Sync', () => {
     });
   });
 });
+
+describe('transactionsStore - Summary Card Calculations', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  // Helper to create a transaction for current month
+  const createThisMonthTransaction = (overrides: Partial<Transaction> = {}): Transaction => {
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-15T00:00:00.000Z`;
+    return {
+      id: `txn-${Math.random().toString(36).slice(2)}`,
+      accountId: 'test-account-1',
+      type: 'expense',
+      amount: 100,
+      currency: 'USD',
+      category: 'food',
+      date: thisMonth,
+      description: 'Test transaction',
+      isReconciled: false,
+      createdAt: thisMonth,
+      updatedAt: thisMonth,
+      ...overrides,
+    };
+  };
+
+  describe('thisMonthIncome - should exclude recurring-generated transactions', () => {
+    it('should sum only one-time income transactions', () => {
+      const store = useTransactionsStore();
+
+      // Add one-time income transactions
+      store.transactions.push(
+        createThisMonthTransaction({ id: 'txn-1', type: 'income', amount: 500, description: 'Freelance' }),
+        createThisMonthTransaction({ id: 'txn-2', type: 'income', amount: 300, description: 'Side gig' })
+      );
+
+      // Add recurring-generated income (should be excluded)
+      store.transactions.push(
+        createThisMonthTransaction({
+          id: 'txn-3',
+          type: 'income',
+          amount: 5000,
+          description: 'Salary',
+          recurringItemId: 'recurring-salary-1',
+        })
+      );
+
+      // thisMonthIncome should ONLY include one-time: 500 + 300 = 800
+      expect(store.thisMonthIncome).toBe(800);
+    });
+
+    it('should return 0 when all income is from recurring items', () => {
+      const store = useTransactionsStore();
+
+      store.transactions.push(
+        createThisMonthTransaction({
+          id: 'txn-1',
+          type: 'income',
+          amount: 5000,
+          recurringItemId: 'recurring-1',
+        })
+      );
+
+      expect(store.thisMonthIncome).toBe(0);
+    });
+
+    it('should not include expenses in income calculation', () => {
+      const store = useTransactionsStore();
+
+      store.transactions.push(
+        createThisMonthTransaction({ id: 'txn-1', type: 'income', amount: 1000 }),
+        createThisMonthTransaction({ id: 'txn-2', type: 'expense', amount: 500 })
+      );
+
+      expect(store.thisMonthIncome).toBe(1000);
+    });
+  });
+
+  describe('thisMonthExpenses - should exclude recurring-generated transactions', () => {
+    it('should sum only one-time expense transactions', () => {
+      const store = useTransactionsStore();
+
+      // Add one-time expenses
+      store.transactions.push(
+        createThisMonthTransaction({ id: 'txn-1', type: 'expense', amount: 50, description: 'Coffee' }),
+        createThisMonthTransaction({ id: 'txn-2', type: 'expense', amount: 100, description: 'Groceries' })
+      );
+
+      // Add recurring-generated expense (should be excluded)
+      store.transactions.push(
+        createThisMonthTransaction({
+          id: 'txn-3',
+          type: 'expense',
+          amount: 2000,
+          description: 'Rent',
+          recurringItemId: 'recurring-rent-1',
+        })
+      );
+
+      // thisMonthExpenses should ONLY include one-time: 50 + 100 = 150
+      expect(store.thisMonthExpenses).toBe(150);
+    });
+
+    it('should return 0 when all expenses are from recurring items', () => {
+      const store = useTransactionsStore();
+
+      store.transactions.push(
+        createThisMonthTransaction({
+          id: 'txn-1',
+          type: 'expense',
+          amount: 2000,
+          recurringItemId: 'recurring-1',
+        })
+      );
+
+      expect(store.thisMonthExpenses).toBe(0);
+    });
+  });
+
+  describe('thisMonthNetCashFlow', () => {
+    it('should be the difference between one-time income and one-time expenses', () => {
+      const store = useTransactionsStore();
+
+      store.transactions.push(
+        // One-time income
+        createThisMonthTransaction({ id: 'txn-1', type: 'income', amount: 1000 }),
+        // One-time expense
+        createThisMonthTransaction({ id: 'txn-2', type: 'expense', amount: 300 }),
+        // Recurring income (should be excluded)
+        createThisMonthTransaction({ id: 'txn-3', type: 'income', amount: 5000, recurringItemId: 'r1' }),
+        // Recurring expense (should be excluded)
+        createThisMonthTransaction({ id: 'txn-4', type: 'expense', amount: 2000, recurringItemId: 'r2' })
+      );
+
+      // Net = 1000 - 300 = 700 (excludes recurring)
+      expect(store.thisMonthNetCashFlow).toBe(700);
+    });
+
+    it('should be negative when one-time expenses exceed one-time income', () => {
+      const store = useTransactionsStore();
+
+      store.transactions.push(
+        createThisMonthTransaction({ id: 'txn-1', type: 'income', amount: 500 }),
+        createThisMonthTransaction({ id: 'txn-2', type: 'expense', amount: 800 })
+      );
+
+      expect(store.thisMonthNetCashFlow).toBe(-300);
+    });
+  });
+});

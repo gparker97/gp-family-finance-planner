@@ -1,13 +1,40 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { Account, CreateAccountInput, UpdateAccountInput } from '@/types/models';
+import type { Account, CreateAccountInput, UpdateAccountInput, CurrencyCode, ExchangeRate } from '@/types/models';
 import * as accountRepo from '@/services/indexeddb/repositories/accountRepository';
+import { useSettingsStore } from './settingsStore';
 
 export const useAccountsStore = defineStore('accounts', () => {
   // State
   const accounts = ref<Account[]>([]);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
+
+  // Helper to get exchange rate
+  function getRate(rates: ExchangeRate[], from: CurrencyCode, to: CurrencyCode): number | undefined {
+    if (from === to) return 1;
+
+    // Direct rate
+    const direct = rates.find((r) => r.from === from && r.to === to);
+    if (direct) return direct.rate;
+
+    // Inverse rate
+    const inverse = rates.find((r) => r.from === to && r.to === from);
+    if (inverse) return 1 / inverse.rate;
+
+    return undefined;
+  }
+
+  // Helper to convert amount to base currency
+  function convertToBaseCurrency(amount: number, fromCurrency: CurrencyCode): number {
+    const settingsStore = useSettingsStore();
+    const baseCurrency = settingsStore.baseCurrency;
+
+    if (fromCurrency === baseCurrency) return amount;
+
+    const rate = getRate(settingsStore.exchangeRates, fromCurrency, baseCurrency);
+    return rate !== undefined ? amount * rate : amount;
+  }
 
   // Getters
   const activeAccounts = computed(() => accounts.value.filter((a) => a.isActive));
@@ -22,15 +49,18 @@ export const useAccountsStore = defineStore('accounts', () => {
     return grouped;
   });
 
+  // Total balance (net worth) - converts each account to base currency first
   const totalBalance = computed(() => {
     return accounts.value
       .filter((a) => a.isActive && a.includeInNetWorth)
       .reduce((sum, account) => {
+        const convertedBalance = convertToBaseCurrency(account.balance, account.currency);
         const multiplier = account.type === 'credit_card' || account.type === 'loan' ? -1 : 1;
-        return sum + account.balance * multiplier;
+        return sum + convertedBalance * multiplier;
       }, 0);
   });
 
+  // Total assets - converts each account to base currency first
   const totalAssets = computed(() => {
     return accounts.value
       .filter(
@@ -40,9 +70,10 @@ export const useAccountsStore = defineStore('accounts', () => {
           a.type !== 'credit_card' &&
           a.type !== 'loan'
       )
-      .reduce((sum, a) => sum + a.balance, 0);
+      .reduce((sum, a) => sum + convertToBaseCurrency(a.balance, a.currency), 0);
   });
 
+  // Total liabilities - converts each account to base currency first
   const totalLiabilities = computed(() => {
     return accounts.value
       .filter(
@@ -51,7 +82,7 @@ export const useAccountsStore = defineStore('accounts', () => {
           a.includeInNetWorth &&
           (a.type === 'credit_card' || a.type === 'loan')
       )
-      .reduce((sum, a) => sum + a.balance, 0);
+      .reduce((sum, a) => sum + convertToBaseCurrency(a.balance, a.currency), 0);
   });
 
   // Actions

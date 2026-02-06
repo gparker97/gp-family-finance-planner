@@ -4,14 +4,43 @@ import type {
   RecurringItem,
   CreateRecurringItemInput,
   UpdateRecurringItemInput,
+  CurrencyCode,
+  ExchangeRate,
 } from '@/types/models';
 import * as recurringRepo from '@/services/indexeddb/repositories/recurringItemRepository';
+import { useSettingsStore } from './settingsStore';
 
 export const useRecurringStore = defineStore('recurring', () => {
   // State
   const recurringItems = ref<RecurringItem[]>([]);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
+
+  // Helper to get exchange rate
+  function getRate(rates: ExchangeRate[], from: CurrencyCode, to: CurrencyCode): number | undefined {
+    if (from === to) return 1;
+
+    // Direct rate
+    const direct = rates.find((r) => r.from === from && r.to === to);
+    if (direct) return direct.rate;
+
+    // Inverse rate
+    const inverse = rates.find((r) => r.from === to && r.to === from);
+    if (inverse) return 1 / inverse.rate;
+
+    return undefined;
+  }
+
+  // Helper to convert amount to base currency
+  function convertToBaseCurrency(amount: number, fromCurrency: CurrencyCode): number {
+    const settingsStore = useSettingsStore();
+    const baseCurrency = settingsStore.baseCurrency;
+
+    if (fromCurrency === baseCurrency) return amount;
+
+    const rate = getRate(settingsStore.exchangeRates, fromCurrency, baseCurrency);
+    return rate !== undefined ? amount * rate : amount;
+  }
 
   // Getters
   const activeItems = computed(() =>
@@ -48,16 +77,26 @@ export const useRecurringStore = defineStore('recurring', () => {
     }
   }
 
+  // Total monthly recurring income - converts each item to base currency first
   const totalMonthlyRecurringIncome = computed(() =>
     activeIncomeItems.value.reduce(
-      (sum, item) => sum + normalizeToMonthly(item.amount, item.frequency),
+      (sum, item) => {
+        const monthlyAmount = normalizeToMonthly(item.amount, item.frequency);
+        const convertedAmount = convertToBaseCurrency(monthlyAmount, item.currency);
+        return sum + convertedAmount;
+      },
       0
     )
   );
 
+  // Total monthly recurring expenses - converts each item to base currency first
   const totalMonthlyRecurringExpenses = computed(() =>
     activeExpenseItems.value.reduce(
-      (sum, item) => sum + normalizeToMonthly(item.amount, item.frequency),
+      (sum, item) => {
+        const monthlyAmount = normalizeToMonthly(item.amount, item.frequency);
+        const convertedAmount = convertToBaseCurrency(monthlyAmount, item.currency);
+        return sum + convertedAmount;
+      },
       0
     )
   );
