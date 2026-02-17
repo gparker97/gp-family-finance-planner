@@ -1,7 +1,7 @@
 # Project Status
 
 > **Last updated:** 2026-02-17
-> **Updated by:** Greg (initial creation)
+> **Updated by:** Claude (Stages 1–3 multi-family architecture + auth)
 
 ## Current Phase
 
@@ -23,7 +23,7 @@
 - Exchange rate auto-fetching from free currency API
 - Recurring transaction processor (daily/monthly/yearly)
 - Multilingual support (English + Chinese) via MyMemory API with IndexedDB caching
-- Project documentation: `docs/ARCHITECTURE.md`, `docs/adr/` (8 ADRs)
+- Project documentation: `docs/ARCHITECTURE.md`, `docs/adr/` (10 ADRs)
 
 ### UI Components
 
@@ -43,8 +43,72 @@
 - First-run setup wizard
 - Multi-currency display with global display currency selector
 
+### Multi-Family Architecture (Stage 1)
+
+- Per-family database architecture: each family gets its own IndexedDB (`gp-family-finance-{familyId}`)
+- Registry database (`gp-finance-registry`): stores families, user mappings, cached auth sessions, global settings
+- Family context orchestrator (`familyContext.ts`) and Pinia store (`familyContextStore.ts`)
+- Legacy migration service: auto-migrates single-DB data to per-family DB on first boot
+- Global settings split from per-family settings (theme, language, exchange rates are device-level)
+- Sync file format v2.0: includes `familyId` and `familyName` (backward-compatible with v1.0)
+- Per-family file handle storage for sync
+- New types: `Family`, `UserFamilyMapping`, `CachedAuthSession`, `GlobalSettings`
+- All existing repositories work unchanged (transparent multi-tenancy via `getDatabase()`)
+- E2E test helpers updated for dynamic per-family DB discovery
+
+### Auth Service + AWS Cognito SDK (Stage 2)
+
+- Installed `amazon-cognito-identity-js` browser SDK
+- Cognito config reader (`src/config/cognito.ts`): reads User Pool ID, Client ID, Region from env vars
+- Cognito service (`src/services/auth/cognitoService.ts`): signUp, signIn, signOut, session management, custom auth (magic link prep)
+- Token manager (`src/services/auth/tokenManager.ts`): caches JWT tokens in registry DB, 7-day offline grace period
+- Auth is fully optional — disabled when Cognito env vars are not set
+
+### Login Page + Route Guards + Session Management (Stage 3)
+
+- Auth store (`src/stores/authStore.ts`): initializeAuth, signIn, signUp, signOut, continueWithoutAuth
+- Login page (`src/pages/LoginPage.vue`): Sign In / Create Account tabs, "Continue without account" option
+- Magic link callback page placeholder (`src/pages/MagicLinkCallbackPage.vue`)
+- Route guards: all app routes have `requiresAuth: true`, login/magic-link routes exempt
+- App.vue bootstrap: global settings → auth init → family resolution → data load
+- AppHeader: profile dropdown with family name, email, sign out, offline badge
+- ADR-009 (per-family database architecture) and ADR-010 (AWS Cognito authentication)
+
+### Family Management Enhancements (Stage 4)
+
+- Role management: `MemberRoleManager.vue` dropdown to promote/demote members (admin/member)
+- `updateMemberRole()` action in familyStore
+- Family name editing inline in FamilyPage header
+- `CreateMemberAccountModal.vue` placeholder (requires Lambda backend)
+- "Create Login" button on member cards (shown when auth is configured)
+
+### Magic Link Authentication (Stage 5)
+
+- `MagicLinkCallbackPage.vue` completes custom auth challenge: initiates custom auth → responds with code → caches tokens → redirects to dashboard
+- LoginPage "Sign in with magic link" option: email input → "Check your email" confirmation screen
+- `initiateCustomAuth()` and `respondToMagicLinkChallenge()` in cognitoService (implemented in Stage 2)
+- Requires AWS Lambda infrastructure for challenge generation (Define/Create/Verify Auth Challenge Lambdas + DynamoDB + SES)
+
+### Passkey (WebAuthn) Authentication (Stage 6)
+
+- `passkeyService.ts`: feature detection, registration, sign-in, passkey management (localStorage for MVP)
+- `PasskeySettings.vue` component: lists registered passkeys, register new, remove existing
+- LoginPage "Sign in with passkey" button (shown when WebAuthn is supported)
+- SettingsPage Security section with PasskeySettings (shown when auth is configured)
+- Requires Cognito WebAuthn support + server-side challenge generation for full flow
+
 ### Recent Fixes
 
+- **Multi-family isolation hardening** — Fixed cross-family data leakage when authenticated user's familyId could not be resolved:
+  - Added cached session familyId as 4th fallback in auth resolution chain (JWT → getUserAttributes → registry → cached session)
+  - Authenticated users no longer fall back to `lastActiveFamilyId` (which could belong to a different user)
+  - Placeholder family creation now uses auth-resolved ID instead of random UUID (`createFamilyWithId()`)
+  - Sync service refuses to load sync file whose `familyId` doesn't match the active family (in `loadAndImport`, `openAndLoadFile`, `decryptAndImport`)
+  - Sync service skips initialization when no active family is set (prevents legacy key fallback)
+  - Sync service `reset()` clears stale file handles and session passwords on family switch
+  - Sync service tracks `currentFileHandleFamilyId` — `save()` blocks writes if handle belongs to a different family
+  - Added `closeDatabase()` before loading family data to ensure clean DB connection
+  - 22 multi-family isolation tests (up from 19)
 - Restored ReportsPage that was wiped during bulk ESLint/Prettier formatting
 - Added data-testid attributes to transaction items and account cards for E2E tests
 - Fixed E2E tests to switch to transactions tab before interacting with elements
@@ -52,7 +116,7 @@
 
 ## In Progress
 
-_(Nothing currently in progress)_
+- **Multi-Family with AWS Cognito Auth** — All 6 stages implemented (client-side); awaiting AWS infrastructure deployment for magic link + passkey backend
 
 ## Up Next (Phase 1 Remaining)
 
@@ -81,13 +145,18 @@ _(None currently tracked)_
 
 ## Decision Log
 
-| Date       | Decision                                                | Rationale                                                            |
-| ---------- | ------------------------------------------------------- | -------------------------------------------------------------------- |
-| 2026-02-17 | Created docs/STATUS.md for project tracking             | Multiple contributors need shared context                            |
-| 2026-02-17 | Added ARCHITECTURE.md and 8 ADR documents               | Document key decisions for contributor onboarding                    |
-| Prior      | Switched from idb library to native IndexedDB APIs      | Reduce dependencies                                                  |
-| Prior      | Chose File System Access API over Google Drive for sync | Simpler implementation, no OAuth needed, user controls file location |
-| Prior      | Used AES-GCM + PBKDF2 for encryption                    | Industry standard, no external dependencies (Web Crypto API)         |
-| Prior      | Stored amounts in original currency, convert on display | No data loss from premature conversion, flexible display             |
-| Prior      | Recurring items as templates, not transactions          | Clean separation, catch-up processing, easy to preview               |
-| Prior      | MyMemory API for translations                           | Free, CORS-enabled, no API key required                              |
+| Date       | Decision                                                | Rationale                                                               |
+| ---------- | ------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 2026-02-17 | Created docs/STATUS.md for project tracking             | Multiple contributors need shared context                               |
+| 2026-02-17 | Added ARCHITECTURE.md and 8 ADR documents               | Document key decisions for contributor onboarding                       |
+| Prior      | Switched from idb library to native IndexedDB APIs      | Reduce dependencies                                                     |
+| Prior      | Chose File System Access API over Google Drive for sync | Simpler implementation, no OAuth needed, user controls file location    |
+| Prior      | Used AES-GCM + PBKDF2 for encryption                    | Industry standard, no external dependencies (Web Crypto API)            |
+| Prior      | Stored amounts in original currency, convert on display | No data loss from premature conversion, flexible display                |
+| Prior      | Recurring items as templates, not transactions          | Clean separation, catch-up processing, easy to preview                  |
+| Prior      | MyMemory API for translations                           | Free, CORS-enabled, no API key required                                 |
+| 2026-02-17 | Per-family databases instead of familyId on all models  | No repository code changes, no schema migration, clean tenant isolation |
+| 2026-02-17 | Global settings (theme, language, rates) in registry DB | Device-level preferences survive family switching                       |
+| 2026-02-17 | AWS Cognito for auth (optional, not required)           | Standard auth provider, extensible for magic link + passkey             |
+| 2026-02-17 | Auth is optional — "Continue without account" mode      | Preserves existing local-only behavior for users without AWS setup      |
+| 2026-02-17 | 7-day offline grace period for cached auth tokens       | Balance between security and offline usability                          |
