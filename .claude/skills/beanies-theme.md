@@ -95,11 +95,11 @@ Use this skill whenever writing UI copy, designing components, choosing colors, 
 ### Celebration triggers
 | Trigger | Asset | Mode | Message |
 |---------|-------|------|---------|
-| Complete setup wizard | `beanies-celebrating-line.png` | Modal | Welcome message |
+| Complete setup wizard | `beanies-celebrating-line.png` | Modal | Welcome message - "Setup complete - ready to start counting your beanies!" |
 | First bank account | `beanies-celebrating-circle.png` | Toast | "Your first bean is planted!" |
-| First transaction | `beanies-celebrating-circle.png` | Toast | "Every bean counts!" |
+| First transaction | `beanies-celebrating-circle.png` | Toast | "Every beanie counts!" |
 | Goal reached 100% | `beanies-celebrating-line.png` | Modal | "Goal complete! The beanies are proud!" |
-| First file save | `beanies-celebrating-circle.png` | Toast | "Your beans are safe and encrypted!" |
+| First file save | `beanies-celebrating-circle.png` | Toast | "Your beanies are safe and encrypted!" |
 | Debt goal paid off | `beanies-celebrating-line.png` | Modal | "Debt-free! The beanies are celebrating!" |
 
 Toast: bottom-center, auto-dismiss 4s, bounce-in animation. Modal: centered overlay with dismiss button.
