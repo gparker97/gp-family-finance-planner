@@ -193,18 +193,19 @@
 - Added pod spinner loading overlay in `App.vue` ("counting beans..." copy)
 - Added project-local skill `.claude/skills/beanies-theme.md`
 
-### Beanie Character Avatars (Issue #39)
+### Beanie Character Avatars (Issue #39) — Closed
 
-- **`src/constants/avatars.ts`** — 8 SVG avatar variant definitions (`adult-male`, `adult-female`, `adult-other`, `child-male`, `child-female`, `child-other`, `family-group`, `family-filtered`). Bean/pill body shapes with dot eyes, arc smiles. All children wear beanie hats (brand signature). Adults have optional cap (male) or bow (female) accessories
-- **`src/components/ui/BeanieAvatar.vue`** — Avatar rendering component with `variant`, `color`, `size` (xs/sm/md/lg/xl), `ariaLabel` props. Renders inline SVG filled with member's profile color, features in Deep Slate. Special handling for `family-group` (overlapping silhouettes) and `family-filtered` (bean + funnel) variants
+- **`src/constants/avatars.ts`** — 8 SVG avatar variant definitions (`adult-male`, `adult-female`, `adult-other`, `child-male`, `child-female`, `child-other`, `family-group`, `family-filtered`). Bean/pill body shapes with dot eyes, arc smiles. All children wear beanie hats (brand signature). Adults have optional cap (male), bow + shoulder-length hair (female), or clean body (other). Female variants have full hair dome + flowing side strands + clear bowtie (two triangles meeting at a point)
+- **`src/components/ui/BeanieAvatar.vue`** — Avatar rendering component with `variant`, `color`, `size` (xs/sm/md/lg/xl), `ariaLabel` props. Renders inline SVG filled with member's profile color, features in Deep Slate. `family-group` renders 4 distinct characters (2 adults + 2 children with beanies) in brand colors (Heritage Orange, Sky Silk, Terracotta, Soft Teal). `family-filtered` renders bean + funnel overlay
 - **`src/composables/useMemberAvatar.ts`** — `getAvatarVariant(gender, ageGroup)`, `getMemberAvatarVariant(member)` (with defaults for legacy records), reactive `useMemberAvatar(memberRef)` and `useFilterAvatar(allSelectedRef)` composables
 - **Data model** — Added `Gender` (`male`|`female`|`other`), `AgeGroup` (`adult`|`child`), and optional `DateOfBirth` (`{ month, day, year? }`) to `FamilyMember` interface
 - **Repository migration** — `applyDefaults()` in `familyMemberRepository.ts` ensures legacy records get `gender: 'other'`, `ageGroup: 'adult'`
-- **FamilyPage** — Gender + age group selects, optional date of birth inputs (month dropdown, day, optional year), live avatar preview in add member modal. Member cards show BeanieAvatar instead of initial circles
+- **FamilyPage** — Gender + age group selects (Male/Female/Other, default Male), date of birth dropdowns (month Jan-Dec, day 1-31, optional year), live avatar preview in add/edit member modals. Member cards show BeanieAvatar instead of initial circles. Full edit member modal with pencil icon on each card
+- **Header filter icons** — MemberFilterDropdown trigger shows: family-group BeanieAvatar (lg) + "all" when all selected, individual member avatar + name when one selected, filtered icon + count for partial selection. Borderless trigger style (no border/background, tight spacing with arrow)
+- **BaseMultiSelect** — Added `#trigger` and `#option` scoped slots + `borderless` prop (backward compatible)
+- **BaseSelect** — Fixed right padding (`pl-3 pr-8`) so dropdown arrow is always visible
 - **AppHeader** — Profile avatar replaced with BeanieAvatar (falls back to `adult-other`)
-- **MemberFilterDropdown** — Per-member BeanieAvatar icons in dropdown options via `#option` scoped slot on BaseMultiSelect
-- **BaseMultiSelect** — Added `#option` scoped slot (backward compatible)
-- **SetupPage + AuthStore** — Default `gender: 'other'`, `ageGroup: 'adult'` for owner creation
+- **SetupPage + AuthStore** — Default `gender: 'male'`, `ageGroup: 'adult'` for owner creation
 - 15 new translation keys with beanie mode overrides
 - Unit tests: 14 tests (composable + avatar definitions)
 - E2E tests: 4 specs (header avatar, family cards, add child member, filter dropdown)
