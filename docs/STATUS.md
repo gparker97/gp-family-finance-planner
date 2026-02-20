@@ -1,7 +1,7 @@
 # Project Status
 
 > **Last updated:** 2026-02-20
-> **Updated by:** Claude (Issue #42 — Financial institution dropdown)
+> **Updated by:** Claude (E2E tests for institution combobox + BaseModal scroll fix)
 
 ## Current Phase
 
@@ -205,6 +205,7 @@
   - Sync service tracks `currentFileHandleFamilyId` — `save()` blocks writes if handle belongs to a different family
   - Added `closeDatabase()` before loading family data to ensure clean DB connection
   - 22 multi-family isolation tests (up from 19)
+- **BaseModal scroll fix** — Modal body now uses `flex-1 overflow-y-auto` with `max-h-[calc(100vh-2rem)]` so tall content scrolls instead of overflowing below the viewport (discovered via asset loan form E2E tests)
 - Restored ReportsPage that was wiped during bulk ESLint/Prettier formatting
 - Added data-testid attributes to transaction items and account cards for E2E tests
 - Fixed E2E tests to switch to transactions tab before interacting with elements
@@ -223,7 +224,7 @@
 - Renamed "All Goals" card to "Active Goals" for clarity
 - 3 new translation keys with beanie mode overrides (`goals.reopenGoal`, `goals.noCompletedGoals`, `goals.completedOn`)
 
-### Financial Institution Dropdown (Issue #42)
+### Financial Institution Dropdown (Issue #42) — Closed
 
 - **`BaseCombobox.vue`** — Reusable searchable single-select dropdown with "Other" support, custom text input, clear button, backward compatibility for free-text values
 - **`src/constants/institutions.ts`** — 22 predefined global banks (BoA, HSBC, DBS, JPMorgan Chase, etc.) with name/shortName
@@ -235,10 +236,24 @@
 - Deleting a custom institution clears it from all linked accounts and asset loans
 - `institutionCountry` added to Account, `lenderCountry` added to AssetLoan, `customInstitutions` added to Settings
 - 7 new translation keys with beanie mode overrides
+- **E2E tests** (8 tests): predefined selection, search/filter, custom "Other" entry, country selection, edit pre-population, shared custom institutions across accounts and assets
+- **`ComboboxHelper`** E2E helper class and **`AssetsPage`** page object created
+- **BaseModal scroll fix**: tall modal content (e.g. asset loan form) now scrolls instead of overflowing below viewport
+
+### Beanie Language Mode (Issue #35) — Closed
+
+- Optional beanie mode toggle in Settings replacing standard UI strings with friendly bean-themed alternatives
+- Single source of truth `STRING_DEFS` in `uiStrings.ts` with side-by-side `en` + `beanie` fields
+- `t()` resolution: beanie override applied only when `language === 'en'` and `beanieMode === true`
+- Translation pipeline always sources from plain English `UI_STRINGS` (hard requirement)
+- Toggle disabled and greyed out when non-English language is active
+- ~100+ beanie string overrides across all pages
+- Unit tests and E2E tests (4 specs)
 
 ## Up Next (Phase 1 Remaining)
 
-- [x] Financial institution dropdown (Issue #42)
+- [x] Financial institution dropdown (Issue #42) ✓
+- [x] Beanie language mode (Issue #35) ✓
 - [ ] Switchable UI themes (Issue #41)
 - [ ] Data validation and error handling improvements
 - [ ] Responsive design polish
