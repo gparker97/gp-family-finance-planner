@@ -1,7 +1,7 @@
 # Project Status
 
 > **Last updated:** 2026-02-20
-> **Updated by:** Claude (E2E tests for institution combobox + BaseModal scroll fix)
+> **Updated by:** Claude (Beanie character avatars for family members, Issue #39)
 
 ## Current Phase
 
@@ -193,6 +193,22 @@
 - Added pod spinner loading overlay in `App.vue` ("counting beans..." copy)
 - Added project-local skill `.claude/skills/beanies-theme.md`
 
+### Beanie Character Avatars (Issue #39)
+
+- **`src/constants/avatars.ts`** — 8 SVG avatar variant definitions (`adult-male`, `adult-female`, `adult-other`, `child-male`, `child-female`, `child-other`, `family-group`, `family-filtered`). Bean/pill body shapes with dot eyes, arc smiles. All children wear beanie hats (brand signature). Adults have optional cap (male) or bow (female) accessories
+- **`src/components/ui/BeanieAvatar.vue`** — Avatar rendering component with `variant`, `color`, `size` (xs/sm/md/lg/xl), `ariaLabel` props. Renders inline SVG filled with member's profile color, features in Deep Slate. Special handling for `family-group` (overlapping silhouettes) and `family-filtered` (bean + funnel) variants
+- **`src/composables/useMemberAvatar.ts`** — `getAvatarVariant(gender, ageGroup)`, `getMemberAvatarVariant(member)` (with defaults for legacy records), reactive `useMemberAvatar(memberRef)` and `useFilterAvatar(allSelectedRef)` composables
+- **Data model** — Added `Gender` (`male`|`female`|`other`), `AgeGroup` (`adult`|`child`), and optional `DateOfBirth` (`{ month, day, year? }`) to `FamilyMember` interface
+- **Repository migration** — `applyDefaults()` in `familyMemberRepository.ts` ensures legacy records get `gender: 'other'`, `ageGroup: 'adult'`
+- **FamilyPage** — Gender + age group selects, optional date of birth inputs (month dropdown, day, optional year), live avatar preview in add member modal. Member cards show BeanieAvatar instead of initial circles
+- **AppHeader** — Profile avatar replaced with BeanieAvatar (falls back to `adult-other`)
+- **MemberFilterDropdown** — Per-member BeanieAvatar icons in dropdown options via `#option` scoped slot on BaseMultiSelect
+- **BaseMultiSelect** — Added `#option` scoped slot (backward compatible)
+- **SetupPage + AuthStore** — Default `gender: 'other'`, `ageGroup: 'adult'` for owner creation
+- 15 new translation keys with beanie mode overrides
+- Unit tests: 14 tests (composable + avatar definitions)
+- E2E tests: 4 specs (header avatar, family cards, add child member, filter dropdown)
+
 ### Recent Fixes
 
 - **Multi-family isolation hardening** — Fixed cross-family data leakage when authenticated user's familyId could not be resolved:
@@ -280,27 +296,28 @@ _(None currently tracked)_
 
 ## Decision Log
 
-| Date       | Decision                                                   | Rationale                                                               |
-| ---------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
-| 2026-02-17 | Created docs/STATUS.md for project tracking                | Multiple contributors need shared context                               |
-| 2026-02-17 | Added ARCHITECTURE.md and 8 ADR documents                  | Document key decisions for contributor onboarding                       |
-| Prior      | Switched from idb library to native IndexedDB APIs         | Reduce dependencies                                                     |
-| Prior      | Chose File System Access API over Google Drive for sync    | Simpler implementation, no OAuth needed, user controls file location    |
-| Prior      | Used AES-GCM + PBKDF2 for encryption                       | Industry standard, no external dependencies (Web Crypto API)            |
-| Prior      | Stored amounts in original currency, convert on display    | No data loss from premature conversion, flexible display                |
-| Prior      | Recurring items as templates, not transactions             | Clean separation, catch-up processing, easy to preview                  |
-| Prior      | MyMemory API for translations                              | Free, CORS-enabled, no API key required                                 |
-| 2026-02-17 | Per-family databases instead of familyId on all models     | No repository code changes, no schema migration, clean tenant isolation |
-| 2026-02-17 | Global settings (theme, language, rates) in registry DB    | Device-level preferences survive family switching                       |
-| 2026-02-17 | AWS Cognito for auth (optional, not required)              | Standard auth provider, extensible for magic link + passkey             |
-| 2026-02-17 | Auth is optional — "Continue without account" mode         | Preserves existing local-only behavior for users without AWS setup      |
-| 2026-02-17 | 7-day offline grace period for cached auth tokens          | Balance between security and offline usability                          |
-| 2026-02-18 | File-first architecture: encrypted file as source of truth | Security value proposition, user data control, IndexedDB is ephemeral   |
-| 2026-02-18 | Encryption enabled by default for new data files           | Secure by default, users can opt out with explicit warning              |
-| 2026-02-18 | Auto-sync always on (no toggle)                            | Simplifies UX, data file always stays current                           |
-| 2026-02-19 | Rebranded to beanies.family (Issue #22)                    | Heritage Orange + Deep Slate palette, Outfit + Inter fonts, squircles   |
-| 2026-02-20 | Centralized icon system (Issue #44)                        | Single source of truth for ~72 icons, brand-enforced stroke style       |
-| 2026-02-20 | Web Audio API for sound effects (Issue #46)                | Zero bundle size, no audio files, sub-ms latency, browser-native        |
-| 2026-02-20 | Beanie UI overhaul complete (Issue #40)                    | All 13 sections done: icons, animations, sounds, empty states, 404, etc |
-| 2026-02-20 | Collapsible completed goals section (Issue #55)            | Disclosure pattern over tabs — completed goals are secondary archive    |
-| 2026-02-20 | Financial institution dropdown (Issue #42)                 | Searchable combobox with custom entry persistence, deferred save        |
+| Date       | Decision                                                   | Rationale                                                                             |
+| ---------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 2026-02-17 | Created docs/STATUS.md for project tracking                | Multiple contributors need shared context                                             |
+| 2026-02-17 | Added ARCHITECTURE.md and 8 ADR documents                  | Document key decisions for contributor onboarding                                     |
+| Prior      | Switched from idb library to native IndexedDB APIs         | Reduce dependencies                                                                   |
+| Prior      | Chose File System Access API over Google Drive for sync    | Simpler implementation, no OAuth needed, user controls file location                  |
+| Prior      | Used AES-GCM + PBKDF2 for encryption                       | Industry standard, no external dependencies (Web Crypto API)                          |
+| Prior      | Stored amounts in original currency, convert on display    | No data loss from premature conversion, flexible display                              |
+| Prior      | Recurring items as templates, not transactions             | Clean separation, catch-up processing, easy to preview                                |
+| Prior      | MyMemory API for translations                              | Free, CORS-enabled, no API key required                                               |
+| 2026-02-17 | Per-family databases instead of familyId on all models     | No repository code changes, no schema migration, clean tenant isolation               |
+| 2026-02-17 | Global settings (theme, language, rates) in registry DB    | Device-level preferences survive family switching                                     |
+| 2026-02-17 | AWS Cognito for auth (optional, not required)              | Standard auth provider, extensible for magic link + passkey                           |
+| 2026-02-17 | Auth is optional — "Continue without account" mode         | Preserves existing local-only behavior for users without AWS setup                    |
+| 2026-02-17 | 7-day offline grace period for cached auth tokens          | Balance between security and offline usability                                        |
+| 2026-02-18 | File-first architecture: encrypted file as source of truth | Security value proposition, user data control, IndexedDB is ephemeral                 |
+| 2026-02-18 | Encryption enabled by default for new data files           | Secure by default, users can opt out with explicit warning                            |
+| 2026-02-18 | Auto-sync always on (no toggle)                            | Simplifies UX, data file always stays current                                         |
+| 2026-02-19 | Rebranded to beanies.family (Issue #22)                    | Heritage Orange + Deep Slate palette, Outfit + Inter fonts, squircles                 |
+| 2026-02-20 | Centralized icon system (Issue #44)                        | Single source of truth for ~72 icons, brand-enforced stroke style                     |
+| 2026-02-20 | Web Audio API for sound effects (Issue #46)                | Zero bundle size, no audio files, sub-ms latency, browser-native                      |
+| 2026-02-20 | Beanie UI overhaul complete (Issue #40)                    | All 13 sections done: icons, animations, sounds, empty states, 404, etc               |
+| 2026-02-20 | Beanie character avatars (Issue #39)                       | Inline SVG avatars by gender/age, children wear beanie hats, replaces initial circles |
+| 2026-02-20 | Collapsible completed goals section (Issue #55)            | Disclosure pattern over tabs — completed goals are secondary archive                  |
+| 2026-02-20 | Financial institution dropdown (Issue #42)                 | Searchable combobox with custom entry persistence, deferred save                      |
