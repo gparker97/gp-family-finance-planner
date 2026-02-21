@@ -1,7 +1,7 @@
 # Project Status
 
 > **Last updated:** 2026-02-21
-> **Updated by:** Claude (v4 UI framework proposal review — 6 new issues, 5 existing issues updated)
+> **Updated by:** Claude (closed #66 functional net worth chart, #65 PNG brand avatars, #67 header redesign)
 
 ## Current Phase
 
@@ -225,6 +225,34 @@
   - Security indicators at 30% opacity ("felt not seen"): file icon + name, lock/unlock, version
   - Removed: `SyncStatusIndicator` component, `BeanieIcon` import, `hoveredPath` ref, hover event listeners, all dark mode conditional classes
 
+### Header Redesign (Issue #67) — Closed
+
+- Removed bottom border, background color, and theme toggle from header
+- Page title moved into header left side (Dashboard shows greeting, other pages show `route.meta.title`)
+- Removed `PageHeader` component from 7 pages (Accounts, Transactions, Assets, Goals, Reports, Forecast, Settings)
+- All controls restyled as squircle containers (`h-10 w-10 rounded-[14px]`) with subtle hover backgrounds
+- Currency selector: symbol only (e.g. `$`), language selector: flag only
+- Privacy toggle: green status dot (`bg-[#27AE60]`) when figures visible
+- Notification bell: BeanieIcon with Heritage Orange dot (static for now)
+- Profile: avatar + chevron only, name/email shown in dropdown panel
+- `bell` icon added to `UTILITY_ICONS` in `icons.ts`
+
+### Functional Net Worth Chart (Issue #66) — Closed
+
+- **`src/composables/useNetWorthHistory.ts`** — Computes historical net worth by replaying transactions backwards from current account balances. Supports 5 time periods (1W daily, 1M daily, 3M every 3 days, 1Y biweekly, All auto-scaled ~30 points). Returns period-over-period change amount and percentage. Computes last-month vs this-month deltas for income, expenses, and cash flow. Respects global member filter
+- **`NetWorthHeroCard.vue`** — Static SVG sparkline replaced with Chart.js `<Line>` area chart via vue-chartjs. Heritage Orange line (`#F15D22`) with gradient fill (30% → transparent). Subtle grid lines at 4% white opacity. Glowing dot marks current value. Period pills now functional — clicking changes chart range and recomputes comparison. Dynamic period label ("this week"/"this month"/"past 3 months"/"this year"/"all time"). Privacy mode shows "Chart hidden" placeholder. Empty state shows "No data yet". Custom tooltip with brand styling
+- **`DashboardPage.vue`** — Wired up composable: `changeAmount`/`changePercent`/`selectedPeriod`/`historyData` to hero card, `incomeChange`/`expenseChange`/`cashFlowChange` to summary stat cards for "vs last month" comparison
+- Assets treated as constant in history (no historical valuation data in MVP)
+
+### PNG Brand Character Avatars (Issue #65) — Closed
+
+- Replaced inline SVG avatar rendering with hand-crafted PNG brand assets from `public/brand/`
+- **`BeanieAvatar.vue`** — Rewritten from `<svg>` to `<div>` + `<img>`. Each avatar shows colored ring border (2px solid in member's color) + soft pastel background (member color at ~12% opacity). `family-filtered` variant shows small funnel badge overlay (SVG icon in dark circle)
+- **`avatars.ts`** — Removed `BeanieAvatarDef` interface, `BEANIE_AVATARS` SVG paths, `getAvatarDef()`. Replaced with `AVATAR_IMAGE_PATHS` mapping variants to PNG paths, `getAvatarImagePath()`. `AvatarVariant` type preserved
+- PNG asset mapping: `adult-male` → father, `adult-female` → mother, `child-male` → baby boy, `child-female` → baby girl, `adult-other`/`child-other` → neutral, `family-group` → family, `family-filtered` → neutral + funnel badge
+- Unit tests rewritten (8 tests — PNG path assertions replace SVG path assertions)
+- E2E tests updated to check for `<img>` elements with `/brand/beanies_*.png` sources
+
 ### Recent Fixes
 
 - **Multi-family isolation hardening** — Fixed cross-family data leakage when authenticated user's familyId could not be resolved:
@@ -286,7 +314,11 @@
 
 - [x] Financial institution dropdown (Issue #42) ✓
 - [x] Beanie language mode (Issue #35) ✓
+- [x] Functional net worth chart (Issue #66) ✓
+- [x] PNG brand avatars (Issue #65) ✓
+- [x] Header redesign (Issue #67) ✓
 - [ ] Switchable UI themes (Issue #41)
+- [ ] Replace native confirm/alert dialogs with branded modal (Issue #56)
 - [ ] Data validation and error handling improvements
 - [ ] Responsive design polish
 - [ ] Financial forecasting / projections page
@@ -355,3 +387,6 @@ _(None currently tracked)_
 | 2026-02-20 | Financial institution dropdown (Issue #42)                 | Searchable combobox with custom entry persistence, deferred save                                                          |
 | 2026-02-21 | Sidebar redesign — Deep Slate + emoji nav (Issue #59)      | Permanent dark sidebar, emoji icons, nav extracted to shared constant for mobile reuse                                    |
 | 2026-02-21 | v4 UI framework proposal uploaded                          | New screens: Budget (#68), Login UI (#69), Landing (#72). Redesigns: Accounts (#70), Transactions (#71), Family Hub (#73) |
+| 2026-02-21 | Header redesign — seamless icon-only controls (#67)        | Page titles in header (not in views), no border/bg, squircle icon-only controls, notification bell, avatar-only profile   |
+| 2026-02-21 | Net worth chart via transaction replay (#66)               | Option A (replay backwards from current balances) chosen over snapshot approach for MVP simplicity                        |
+| 2026-02-21 | PNG brand avatars replace inline SVGs (#65)                | Hand-crafted PNGs are more expressive; member differentiation via colored ring + pastel background                        |
