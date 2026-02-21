@@ -1,7 +1,7 @@
 # Project Status
 
 > **Last updated:** 2026-02-21
-> **Updated by:** Claude (Sidebar redesign — Deep Slate + emoji nav + profile card, Issue #59)
+> **Updated by:** Claude (v4 UI framework proposal review — 6 new issues, 5 existing issues updated)
 
 ## Current Phase
 
@@ -291,19 +291,35 @@
 - [ ] Responsive design polish
 - [ ] Financial forecasting / projections page
 
+## v4 UI Framework Proposal
+
+A v4 UI framework proposal has been uploaded to `docs/brand/beanies-ui-framework-proposal-v4.html`, superseding v3 with additional screens and design refinements. New issues created:
+
+| Issue | Screen                                                               | Status     |
+| ----- | -------------------------------------------------------------------- | ---------- |
+| #68   | Budget page — family budget tracking with category budgets           | New screen |
+| #69   | Login page UI redesign — warm welcome with trust badges              | Redesign   |
+| #70   | Accounts page redesign — Assets/Liabilities hero + Cards/List toggle | Redesign   |
+| #71   | Transactions page — full ledger view                                 | Redesign   |
+| #72   | Landing page — public-facing hero page                               | New screen |
+| #73   | Family Hub — 3-column layout with calendar and events                | Redesign   |
+
+Existing issues updated with v4 references: #60, #61, #62, #63, #64.
+
 ## Future Phases
 
 ### Phase 2 — Enhanced Features
 
+- [ ] Budget page with category budgets and spending vs planned (#68)
 - [ ] Data import/export (CSV, etc.)
 - [ ] PWA offline support (service worker)
 - [ ] Google Drive sync (OAuth integration)
 - [ ] Skip/modify individual recurring occurrences
+- [ ] Landing/marketing page (#72)
 
 ### Phase 3 — AI & Advanced
 
 - [ ] AI-powered insights (Claude/OpenAI/Gemini)
-- [ ] Budget tracking and alerts
 - [ ] Additional language support
 
 ## Known Issues
@@ -312,29 +328,30 @@ _(None currently tracked)_
 
 ## Decision Log
 
-| Date       | Decision                                                   | Rationale                                                                              |
-| ---------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| 2026-02-17 | Created docs/STATUS.md for project tracking                | Multiple contributors need shared context                                              |
-| 2026-02-17 | Added ARCHITECTURE.md and 8 ADR documents                  | Document key decisions for contributor onboarding                                      |
-| Prior      | Switched from idb library to native IndexedDB APIs         | Reduce dependencies                                                                    |
-| Prior      | Chose File System Access API over Google Drive for sync    | Simpler implementation, no OAuth needed, user controls file location                   |
-| Prior      | Used AES-GCM + PBKDF2 for encryption                       | Industry standard, no external dependencies (Web Crypto API)                           |
-| Prior      | Stored amounts in original currency, convert on display    | No data loss from premature conversion, flexible display                               |
-| Prior      | Recurring items as templates, not transactions             | Clean separation, catch-up processing, easy to preview                                 |
-| Prior      | MyMemory API for translations                              | Free, CORS-enabled, no API key required                                                |
-| 2026-02-17 | Per-family databases instead of familyId on all models     | No repository code changes, no schema migration, clean tenant isolation                |
-| 2026-02-17 | Global settings (theme, language, rates) in registry DB    | Device-level preferences survive family switching                                      |
-| 2026-02-17 | AWS Cognito for auth (optional, not required)              | Standard auth provider, extensible for magic link + passkey                            |
-| 2026-02-17 | Auth is optional — "Continue without account" mode         | Preserves existing local-only behavior for users without AWS setup                     |
-| 2026-02-17 | 7-day offline grace period for cached auth tokens          | Balance between security and offline usability                                         |
-| 2026-02-18 | File-first architecture: encrypted file as source of truth | Security value proposition, user data control, IndexedDB is ephemeral                  |
-| 2026-02-18 | Encryption enabled by default for new data files           | Secure by default, users can opt out with explicit warning                             |
-| 2026-02-18 | Auto-sync always on (no toggle)                            | Simplifies UX, data file always stays current                                          |
-| 2026-02-19 | Rebranded to beanies.family (Issue #22)                    | Heritage Orange + Deep Slate palette, Outfit + Inter fonts, squircles                  |
-| 2026-02-20 | Centralized icon system (Issue #44)                        | Single source of truth for ~72 icons, brand-enforced stroke style                      |
-| 2026-02-20 | Web Audio API for sound effects (Issue #46)                | Zero bundle size, no audio files, sub-ms latency, browser-native                       |
-| 2026-02-20 | Beanie UI overhaul complete (Issue #40)                    | All 13 sections done: icons, animations, sounds, empty states, 404, etc                |
-| 2026-02-20 | Beanie character avatars (Issue #39)                       | Inline SVG avatars by gender/age, children wear beanie hats, replaces initial circles  |
-| 2026-02-20 | Collapsible completed goals section (Issue #55)            | Disclosure pattern over tabs — completed goals are secondary archive                   |
-| 2026-02-20 | Financial institution dropdown (Issue #42)                 | Searchable combobox with custom entry persistence, deferred save                       |
-| 2026-02-21 | Sidebar redesign — Deep Slate + emoji nav (Issue #59)      | Permanent dark sidebar, emoji icons, nav extracted to shared constant for mobile reuse |
+| Date       | Decision                                                   | Rationale                                                                                                                 |
+| ---------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 2026-02-17 | Created docs/STATUS.md for project tracking                | Multiple contributors need shared context                                                                                 |
+| 2026-02-17 | Added ARCHITECTURE.md and 8 ADR documents                  | Document key decisions for contributor onboarding                                                                         |
+| Prior      | Switched from idb library to native IndexedDB APIs         | Reduce dependencies                                                                                                       |
+| Prior      | Chose File System Access API over Google Drive for sync    | Simpler implementation, no OAuth needed, user controls file location                                                      |
+| Prior      | Used AES-GCM + PBKDF2 for encryption                       | Industry standard, no external dependencies (Web Crypto API)                                                              |
+| Prior      | Stored amounts in original currency, convert on display    | No data loss from premature conversion, flexible display                                                                  |
+| Prior      | Recurring items as templates, not transactions             | Clean separation, catch-up processing, easy to preview                                                                    |
+| Prior      | MyMemory API for translations                              | Free, CORS-enabled, no API key required                                                                                   |
+| 2026-02-17 | Per-family databases instead of familyId on all models     | No repository code changes, no schema migration, clean tenant isolation                                                   |
+| 2026-02-17 | Global settings (theme, language, rates) in registry DB    | Device-level preferences survive family switching                                                                         |
+| 2026-02-17 | AWS Cognito for auth (optional, not required)              | Standard auth provider, extensible for magic link + passkey                                                               |
+| 2026-02-17 | Auth is optional — "Continue without account" mode         | Preserves existing local-only behavior for users without AWS setup                                                        |
+| 2026-02-17 | 7-day offline grace period for cached auth tokens          | Balance between security and offline usability                                                                            |
+| 2026-02-18 | File-first architecture: encrypted file as source of truth | Security value proposition, user data control, IndexedDB is ephemeral                                                     |
+| 2026-02-18 | Encryption enabled by default for new data files           | Secure by default, users can opt out with explicit warning                                                                |
+| 2026-02-18 | Auto-sync always on (no toggle)                            | Simplifies UX, data file always stays current                                                                             |
+| 2026-02-19 | Rebranded to beanies.family (Issue #22)                    | Heritage Orange + Deep Slate palette, Outfit + Inter fonts, squircles                                                     |
+| 2026-02-20 | Centralized icon system (Issue #44)                        | Single source of truth for ~72 icons, brand-enforced stroke style                                                         |
+| 2026-02-20 | Web Audio API for sound effects (Issue #46)                | Zero bundle size, no audio files, sub-ms latency, browser-native                                                          |
+| 2026-02-20 | Beanie UI overhaul complete (Issue #40)                    | All 13 sections done: icons, animations, sounds, empty states, 404, etc                                                   |
+| 2026-02-20 | Beanie character avatars (Issue #39)                       | Inline SVG avatars by gender/age, children wear beanie hats, replaces initial circles                                     |
+| 2026-02-20 | Collapsible completed goals section (Issue #55)            | Disclosure pattern over tabs — completed goals are secondary archive                                                      |
+| 2026-02-20 | Financial institution dropdown (Issue #42)                 | Searchable combobox with custom entry persistence, deferred save                                                          |
+| 2026-02-21 | Sidebar redesign — Deep Slate + emoji nav (Issue #59)      | Permanent dark sidebar, emoji icons, nav extracted to shared constant for mobile reuse                                    |
+| 2026-02-21 | v4 UI framework proposal uploaded                          | New screens: Budget (#68), Login UI (#69), Landing (#72). Redesigns: Accounts (#70), Transactions (#71), Family Hub (#73) |
