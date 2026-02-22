@@ -1,7 +1,7 @@
 # Project Status
 
-> **Last updated:** 2026-02-21
-> **Updated by:** Claude (closed #66 functional net worth chart, #65 PNG brand avatars, #67 header redesign)
+> **Last updated:** 2026-02-22
+> **Updated by:** Claude (closed #36 currency chips, #38 language picker flags, #57 design system foundation, #58 dashboard redesign; i18n extraction, chart labels, role display fix)
 
 ## Current Phase
 
@@ -237,6 +237,67 @@
 - Profile: avatar + chevron only, name/email shown in dropdown panel
 - `bell` icon added to `UTILITY_ICONS` in `icons.ts`
 
+### Configurable Currency Chips (Issue #36) — Closed
+
+- `preferredCurrencies` added to Settings model and IndexedDB repository
+- Settings page: multi-select for up to 4 preferred currencies with removable chips
+- Header: inline currency chips in white-bg pill — active chip in Heritage Orange, click to switch instantly
+- All currency dropdowns show preferred currencies first via shared `useCurrencyOptions()` composable
+- Fallback to baseCurrency if active display currency is removed from preferred list
+
+### Branded Language Picker Flags (Issue #38) — Closed
+
+- SVG flag images (`/brand/flags/us.svg`, `/brand/flags/cn.svg`) for cross-platform rendering (emoji flags don't render on Windows)
+- Language picker uses `<img>` tags with SVG flags in white-bg pill + chevron
+- Dropdown rows show flag in squircle container + native name with Heritage Orange active highlight
+- `flagIcon` field added to `LanguageInfo` interface
+
+### Design System Foundation (Issue #57) — Closed
+
+- All dashboard components created: NetWorthHeroCard, SummaryStatCard, GoalProgressItem, ActivityItem, FamilyBeanRow, RecurringSummaryWidget
+- UI components: ToggleSwitch, ToastNotification, BeanieAvatar
+- CSS custom properties (--card-shadow, --sq, --silk10, etc.) added to style.css
+- v3 Nook UI styling: 24px rounded corners, soft shadows, gradient cards, Heritage Orange accents
+
+### Dashboard Redesign (Issue #58) — Closed
+
+- Greeting header with time-of-day message + date subtitle
+- Net Worth Hero Card with sparkline chart, time period selector, and change indicators
+- 3 Summary stat cards (Income / Expenses / Cash Flow) in grid layout
+- Family Beans row with beanie avatars, role labels, and Add Bean button
+- 2-column grid: Savings Goals with progress bars + Recurring Summary widget
+- All cards use v3 rounded-3xl styling with hover lift
+
+### i18n Full String Extraction
+
+- Audited all 15+ Vue files, extracted ~200 hardcoded English strings to `uiStrings.ts`
+- All UI text now uses `t('key')` translation calls — enables Chinese translation and beanie mode for all strings
+- Files updated: DashboardPage, AppHeader, AppSidebar, SettingsPage, TransactionsPage, ReportsPage, FamilyPage, SetupPage, LoginPage, MagicLinkCallbackPage, PasswordModal, FamilyBeanRow, RecurringSummaryWidget, NetWorthHeroCard
+- Project documentation updated: all new UI text must use the translation system, never hardcoded
+
+### Net Worth Chart Axis Labels
+
+- Y-axis compact labels with currency symbol (e.g. `$125k`, `$1.2M`)
+- X-axis date labels with Outfit font, last label shows "Today"
+- Horizontal grid lines at 4% white opacity
+- Chart height increased from h-20 to h-28
+
+### Plans Archive
+
+- `docs/plans/` directory created with naming convention and workflow documentation
+- Accepted implementation plans saved before work begins for historical reference
+- Rule added to CLAUDE.md project documentation
+
+### Performance Reference Document
+
+- `docs/PERFORMANCE.md` created covering client-side resource boundaries, growth projections, and 8 prioritized mitigation strategies
+- Published to GitHub wiki
+
+### Family Member Role Display Fix
+
+- `FamilyBeanRow.vue` `getRoleLabel` now checks `member.ageGroup` (adult/child) instead of only `member.role`
+- Adults with 'member' role correctly show "Parent"/"Big Bean" instead of "Little Bean"
+
 ### Functional Net Worth Chart (Issue #66) — Closed
 
 - **`src/composables/useNetWorthHistory.ts`** — Computes historical net worth by replaying transactions backwards from current account balances. Supports 5 time periods (1W daily, 1M daily, 3M every 3 days, 1Y biweekly, All auto-scaled ~30 points). Returns period-over-period change amount and percentage. Computes last-month vs this-month deltas for income, expenses, and cash flow. Respects global member filter
@@ -317,6 +378,10 @@
 - [x] Functional net worth chart (Issue #66) ✓
 - [x] PNG brand avatars (Issue #65) ✓
 - [x] Header redesign (Issue #67) ✓
+- [x] Design system foundation (Issue #57) ✓
+- [x] Dashboard redesign (Issue #58) ✓
+- [x] Configurable currency chips (Issue #36) ✓
+- [x] Branded language picker flags (Issue #38) ✓
 - [ ] Switchable UI themes (Issue #41)
 - [ ] Replace native confirm/alert dialogs with branded modal (Issue #56)
 - [ ] Data validation and error handling improvements
@@ -390,3 +455,8 @@ _(None currently tracked)_
 | 2026-02-21 | Header redesign — seamless icon-only controls (#67)        | Page titles in header (not in views), no border/bg, squircle icon-only controls, notification bell, avatar-only profile   |
 | 2026-02-21 | Net worth chart via transaction replay (#66)               | Option A (replay backwards from current balances) chosen over snapshot approach for MVP simplicity                        |
 | 2026-02-21 | PNG brand avatars replace inline SVGs (#65)                | Hand-crafted PNGs are more expressive; member differentiation via colored ring + pastel background                        |
+| 2026-02-22 | Configurable currency chips in header (#36)                | Inline chips for instant switching; max 4 preferred currencies persisted in settings                                      |
+| 2026-02-22 | SVG flag images instead of emoji flags (#38)               | Emoji flags don't render on Windows; SVGs ensure cross-platform visibility                                                |
+| 2026-02-22 | Full i18n string extraction                                | All ~200 hardcoded UI strings moved to uiStrings.ts; project rule: no hardcoded text in templates                         |
+| 2026-02-22 | Plans archive in docs/plans/                               | Accepted plans saved before implementation for historical reference and future context                                    |
+| 2026-02-22 | Performance reference document                             | Client-side resource boundaries, growth projections, and mitigation strategies documented                                 |
