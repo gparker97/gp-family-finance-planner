@@ -1,7 +1,7 @@
 # Project Status
 
 > **Last updated:** 2026-02-22
-> **Updated by:** Claude (closed #36 currency chips, #38 language picker flags, #57 design system foundation, #58 dashboard redesign; i18n extraction, chart labels, role display fix)
+> **Updated by:** Claude (branded confirmation modal #56, count-up animation restore, blurred masked chart, closed #14 per-user isolation)
 
 ## Current Phase
 
@@ -314,6 +314,26 @@
 - Unit tests rewritten (8 tests — PNG path assertions replace SVG path assertions)
 - E2E tests updated to check for `<img>` elements with `/brand/beanies_*.png` sources
 
+### Branded Confirmation Modal (Issue #56) — Closed
+
+- `useConfirm` composable (singleton pattern matching `useCelebration`): `confirm()` and `alert()` return `Promise<boolean>`
+- `ConfirmModal.vue` component wrapping `BaseModal` + `BaseButton` + `BeanieIcon` with danger (red) and info (orange) variants
+- All 9 native `confirm()`/`alert()` calls replaced across 6 files (Accounts, Transactions, Assets, Goals, Family, PasskeySettings)
+- 14 new i18n keys for dialog titles and messages with beanie mode overrides
+- Wired into `App.vue` alongside `CelebrationOverlay`
+
+### Dashboard Count-Up Animation Restore
+
+- Re-integrated `useCountUp` composable into `SummaryStatCard` for animated number transitions
+- Animation triggers on page load, view switching (component remount), and privacy mode reveal (target returns 0 when masked)
+- Respects `prefers-reduced-motion` accessibility setting
+
+### Blurred Masked Chart
+
+- Dashboard net worth chart shows blurred view (`blur-md`) instead of "chart hidden" placeholder when privacy masking is on
+- Matches Reports page pattern; `pointer-events-none` prevents tooltip data leaks
+- Smooth CSS transition (`transition-all duration-300`) between blurred and clear states
+
 ### Recent Fixes
 
 - **Multi-family isolation hardening** — Fixed cross-family data leakage when authenticated user's familyId could not be resolved:
@@ -382,8 +402,8 @@
 - [x] Dashboard redesign (Issue #58) ✓
 - [x] Configurable currency chips (Issue #36) ✓
 - [x] Branded language picker flags (Issue #38) ✓
+- [x] Replace native confirm/alert dialogs with branded modal (Issue #56) ✓
 - [ ] Switchable UI themes (Issue #41)
-- [ ] Replace native confirm/alert dialogs with branded modal (Issue #56)
 - [ ] Data validation and error handling improvements
 - [ ] Responsive design polish
 - [ ] Financial forecasting / projections page
