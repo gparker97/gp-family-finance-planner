@@ -20,14 +20,3 @@ output "website_url" {
   value       = "https://${var.domain_name}"
 }
 
-# ── Auth outputs ─────────────────────────────────────────────────────────────
-
-output "cognito_user_pool_id" {
-  description = "Cognito User Pool ID"
-  value       = module.auth.user_pool_id
-}
-
-output "cognito_client_id" {
-  description = "Cognito App Client ID"
-  value       = module.auth.client_id
-}

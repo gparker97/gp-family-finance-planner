@@ -35,10 +35,3 @@ module "frontend" {
   }
 }
 
-module "auth" {
-  source = "./modules/auth"
-
-  app_name       = var.app_name
-  domain_name    = var.domain_name
-  environment    = var.environment
-}

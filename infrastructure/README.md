@@ -8,7 +8,6 @@ Terraform configuration for deploying beanies.family to AWS.
 - **CloudFront** — CDN with HTTPS, gzip/brotli, SPA routing
 - **ACM** — SSL certificate for beanies.family (us-east-1)
 - **Route53** — DNS records (A/AAAA alias to CloudFront)
-- **Cognito** — User authentication (email/password)
 
 ## Prerequisites
 
@@ -45,8 +44,6 @@ After applying, key outputs:
 
 - `s3_bucket_name` — Upload built frontend here
 - `cloudfront_distribution_id` — For cache invalidation
-- `cognito_user_pool_id` — For frontend auth config
-- `cognito_client_id` — For frontend auth config
 
 ## Deploying Frontend
 

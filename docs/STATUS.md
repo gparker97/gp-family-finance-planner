@@ -109,56 +109,42 @@
 ### Multi-Family Architecture (Stage 1)
 
 - Per-family database architecture: each family gets its own IndexedDB (`gp-family-finance-{familyId}`)
-- Registry database (`gp-finance-registry`): stores families, user mappings, cached auth sessions, global settings
+- Registry database (`gp-finance-registry`): stores families, user mappings, global settings
 - Family context orchestrator (`familyContext.ts`) and Pinia store (`familyContextStore.ts`)
 - Legacy migration service: auto-migrates single-DB data to per-family DB on first boot
 - Global settings split from per-family settings (theme, language, exchange rates are device-level)
 - Sync file format v2.0: includes `familyId` and `familyName` (backward-compatible with v1.0)
 - Per-family file handle storage for sync
-- New types: `Family`, `UserFamilyMapping`, `CachedAuthSession`, `GlobalSettings`
+- New types: `Family`, `UserFamilyMapping`, `GlobalSettings`
 - All existing repositories work unchanged (transparent multi-tenancy via `getDatabase()`)
 - E2E test helpers updated for dynamic per-family DB discovery
 
-### Auth Service + AWS Cognito SDK (Stage 2)
+### File-Based Authentication (replacing Cognito)
 
-- Installed `amazon-cognito-identity-js` browser SDK
-- Cognito config reader (`src/config/cognito.ts`): reads User Pool ID, Client ID, Region from env vars
-- Cognito service (`src/services/auth/cognitoService.ts`): signUp, signIn, signOut, session management, custom auth (magic link prep)
-- Token manager (`src/services/auth/tokenManager.ts`): caches JWT tokens in registry DB, 7-day offline grace period
-- Auth is fully optional — disabled when Cognito env vars are not set
+- **Password service** (`src/services/auth/passwordService.ts`): PBKDF2 hashing (100k iterations, SHA-256, 16-byte salt, 32-byte hash) with constant-time verification
+- **Auth store** (`src/stores/authStore.ts`): complete rewrite — signIn (member picker + password), signUp (owner creates pod), setPassword (joiner onboarding), signOut
+- **Login flow**: WelcomeGate → SignInView (member picker + password) / CreatePodView (local auth) / JoinPodView (family code entry)
+- **Joiner onboarding**: SetupPage includes password creation fields during joiner profile setup
+- **Data model**: `passwordHash` and `requiresPassword` fields on `FamilyMember`
+- Route guards: all app routes have `requiresAuth: true`, login route exempt
+- App.vue bootstrap simplified: global settings → auth init → family resolution → data load
+- ADR-014 (file-based auth decision), supersedes ADR-010 and ADR-013
 
-### Login Page + Route Guards + Session Management (Stage 3)
-
-- Auth store (`src/stores/authStore.ts`): initializeAuth, signIn, signUp, signOut, continueWithoutAuth
-- Login page (`src/pages/LoginPage.vue`): Sign In / Create Account tabs, "Continue without account" option
-- Magic link callback page placeholder (`src/pages/MagicLinkCallbackPage.vue`)
-- Route guards: all app routes have `requiresAuth: true`, login/magic-link routes exempt
-- App.vue bootstrap: global settings → auth init → family resolution → data load
-- AppHeader: profile dropdown with family name, email, sign out, offline badge
-- ADR-009 (per-family database architecture) and ADR-010 (AWS Cognito authentication)
-
-### Family Management Enhancements (Stage 4)
-
-- Role management: `MemberRoleManager.vue` dropdown to promote/demote members (admin/member)
-- `updateMemberRole()` action in familyStore
-- Family name editing inline in FamilyPage header
-- `CreateMemberAccountModal.vue` placeholder (requires Lambda backend)
-- "Create Login" button on member cards (shown when auth is configured)
-
-### Magic Link Authentication (Stage 5)
-
-- `MagicLinkCallbackPage.vue` completes custom auth challenge: initiates custom auth → responds with code → caches tokens → redirects to dashboard
-- LoginPage "Sign in with magic link" option: email input → "Check your email" confirmation screen
-- `initiateCustomAuth()` and `respondToMagicLinkChallenge()` in cognitoService (implemented in Stage 2)
-- Requires AWS Lambda infrastructure for challenge generation (Define/Create/Verify Auth Challenge Lambdas + DynamoDB + SES)
-
-### Passkey (WebAuthn) Authentication (Stage 6)
+### Passkey (WebAuthn) Authentication (Future)
 
 - `passkeyService.ts`: feature detection, registration, sign-in, passkey management (localStorage for MVP)
 - `PasskeySettings.vue` component: lists registered passkeys, register new, remove existing
-- LoginPage "Sign in with passkey" button (shown when WebAuthn is supported)
-- SettingsPage Security section with PasskeySettings (shown when auth is configured)
-- Requires Cognito WebAuthn support + server-side challenge generation for full flow
+- Requires server-side challenge generation for full flow (deferred)
+
+### Cognito Removal
+
+- Deleted: `src/config/cognito.ts`, `src/services/auth/cognitoService.ts`, `src/services/auth/tokenManager.ts`, `src/services/auth/index.ts`, `src/services/api/adminApi.ts`
+- Deleted: `src/pages/MagicLinkCallbackPage.vue`, `src/components/login/VerificationCodeForm.vue`, `src/components/family/CreateMemberAccountModal.vue`
+- Deleted: `infrastructure/modules/auth/` (Cognito User Pool), `infrastructure/modules/api/` (Lambda + API Gateway), `infrastructure/scripts/cognito-sync-check.sh`
+- Removed `amazon-cognito-identity-js` package (~165KB bundle reduction)
+- Removed `cachedSessions` object store from registry database (v1 → v2 migration)
+- Removed `CachedAuthSession` type, `isLocalOnly` from `UserFamilyMapping`, `isLocalOnlyMode` from `GlobalSettings`
+- Removed Cognito env vars from `.env.example`, `.github/workflows/deploy.yml`, `vite.config.ts`
 
 ### File-First Architecture
 
@@ -371,16 +357,6 @@
 - Hamburger menu shows dual sign-out options when trusted device is on
 - 8 new i18n keys for trust prompt, settings toggle, and sign-out options
 
-### Email Verification Fix (Code-Based)
-
-- Switched Cognito from `CONFIRM_WITH_LINK` to `CONFIRM_WITH_CODE` — link-based verification redirected to AWS-hosted page with no return URL support
-- Added in-app verification code entry form after sign-up (6-digit numeric input with auto-sign-in on success)
-- `confirmSignUp()` and `resendConfirmationCode()` added to cognitoService
-- Post-verification auto sign-in redirects to `/setup` for new users
-- Regular sign-in reads `onboardingCompleted` directly from IndexedDB to determine redirect destination (`/setup` vs `/dashboard`)
-- Terraform applied: Cognito User Pool updated in production
-- 7 new i18n keys for verification code flow
-
 ### Recent Fixes
 
 - **Multi-family isolation hardening** — Fixed cross-family data leakage when authenticated user's familyId could not be resolved:
@@ -403,17 +379,16 @@
 
 - **Terraform IaC** (`infrastructure/`) — Modular Terraform configuration with S3 backend + DynamoDB locking
   - `frontend` module: S3 bucket (CloudFront OAC), CloudFront distribution (HTTPS, gzip, SPA routing), ACM cert (DNS-validated), Route53 A/AAAA records
-  - `auth` module: Cognito User Pool (email sign-in, code-based verification, custom attributes `familyId`/`familyRole`), SPA app client (no secret, SRP auth)
 - **CI/CD Pipeline** (`.github/workflows/deploy.yml`) — Two-job GitHub Actions workflow:
   - `test` job: lint, type-check, Vitest unit tests, Playwright E2E (chromium), production build
   - `deploy` job: S3 sync + CloudFront cache invalidation (only runs after tests pass)
-  - All secrets (Cognito IDs, AWS credentials, S3 bucket, CloudFront ID) stored in GitHub Secrets
+  - All secrets (AWS credentials, S3 bucket, CloudFront ID) stored in GitHub Secrets
 - **Live at** `https://beanies.family` (and `https://www.beanies.family`)
 - All sub-issues closed: #8, #9, #10, #11, #12, #13, #14
 
 ## In Progress
 
-- **Multi-Family with AWS Cognito Auth** — All 6 stages implemented (client-side); magic link + passkey require Lambda backend
+- **Multi-Family with File-Based Auth** — Per-family databases, file-based authentication (Cognito removed), passkey support deferred
 
 ### Completed Goals Section (Issue #55)
 
@@ -520,9 +495,7 @@ _(None currently tracked)_
 | Prior      | MyMemory API for translations                              | Free, CORS-enabled, no API key required                                                                                   |
 | 2026-02-17 | Per-family databases instead of familyId on all models     | No repository code changes, no schema migration, clean tenant isolation                                                   |
 | 2026-02-17 | Global settings (theme, language, rates) in registry DB    | Device-level preferences survive family switching                                                                         |
-| 2026-02-17 | AWS Cognito for auth (optional, not required)              | Standard auth provider, extensible for magic link + passkey                                                               |
-| 2026-02-17 | Auth is optional — "Continue without account" mode         | Preserves existing local-only behavior for users without AWS setup                                                        |
-| 2026-02-17 | 7-day offline grace period for cached auth tokens          | Balance between security and offline usability                                                                            |
+| 2026-02-22 | File-based auth replaces Cognito (ADR-014)                 | PBKDF2 password hashes in data file; true local-first, ~165KB bundle reduction, no cloud auth infrastructure              |
 | 2026-02-18 | File-first architecture: encrypted file as source of truth | Security value proposition, user data control, IndexedDB is ephemeral                                                     |
 | 2026-02-18 | Encryption enabled by default for new data files           | Secure by default, users can opt out with explicit warning                                                                |
 | 2026-02-18 | Auto-sync always on (no toggle)                            | Simplifies UX, data file always stays current                                                                             |
@@ -545,9 +518,8 @@ _(None currently tracked)_
 | 2026-02-22 | Plans archive in docs/plans/                               | Accepted plans saved before implementation for historical reference and future context                                    |
 | 2026-02-22 | Performance reference document                             | Client-side resource boundaries, growth projections, and mitigation strategies documented                                 |
 | 2026-02-22 | Mobile responsive layout (#63)                             | Hamburger menu + 4-tab bottom nav + breakpoint composable; sidebar hidden on mobile; responsive page grids                |
-| 2026-02-22 | AWS infrastructure via Terraform (#8-#11)                  | S3/CloudFront/ACM/Route53 for hosting, Cognito for auth, modular IaC with remote state                                    |
+| 2026-02-22 | AWS infrastructure via Terraform (#8-#11)                  | S3/CloudFront/ACM/Route53 for hosting, modular IaC with remote state                                                      |
 | 2026-02-22 | CI/CD pipeline with E2E gating (#11)                       | GitHub Actions: lint + type-check + unit tests + Playwright E2E must pass before deploy to production                     |
-| 2026-02-22 | Site deployed to beanies.family                            | Production build with Cognito env vars, S3 sync, CloudFront CDN, HTTPS via ACM                                            |
+| 2026-02-22 | Site deployed to beanies.family                            | Production build, S3 sync, CloudFront CDN, HTTPS via ACM                                                                  |
 | 2026-02-22 | Trusted device mode (#74)                                  | Persistent IndexedDB cache across sign-outs for instant returning user access; explicit "Sign out & clear data" option    |
-| 2026-02-22 | Switched email verification from link to code              | Link-based verification redirected to AWS-hosted page with no return; code-based keeps user in the app                    |
 | 2026-02-22 | Post-sign-in redirect checks onboarding status             | New users redirected to /setup instead of /dashboard; direct DB read after sign-in for reliability                        |
