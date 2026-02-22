@@ -55,6 +55,33 @@ resource "aws_cognito_user_pool" "main" {
     }
   }
 
+  # Custom attributes for app integration
+  schema {
+    name                     = "familyId"
+    attribute_data_type      = "String"
+    developer_only_attribute = false
+    required                 = false
+    mutable                  = true
+
+    string_attribute_constraints {
+      min_length = 0
+      max_length = 256
+    }
+  }
+
+  schema {
+    name                     = "familyRole"
+    attribute_data_type      = "String"
+    developer_only_attribute = false
+    required                 = false
+    mutable                  = true
+
+    string_attribute_constraints {
+      min_length = 0
+      max_length = 256
+    }
+  }
+
   # Account recovery via email
   account_recovery_setting {
     recovery_mechanism {
@@ -101,6 +128,6 @@ resource "aws_cognito_user_pool_client" "web" {
   prevent_user_existence_errors = "ENABLED"
 
   # Read/write attributes
-  read_attributes  = ["email", "name", "email_verified"]
-  write_attributes = ["email", "name"]
+  read_attributes  = ["email", "name", "email_verified", "custom:familyId", "custom:familyRole"]
+  write_attributes = ["email", "name", "custom:familyId", "custom:familyRole"]
 }
