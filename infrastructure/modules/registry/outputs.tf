@@ -17,3 +17,13 @@ output "lambda_function_name" {
   description = "Lambda function name"
   value       = aws_lambda_function.registry.function_name
 }
+
+output "api_gateway_id" {
+  description = "API Gateway HTTP API ID (shared across modules)"
+  value       = aws_apigatewayv2_api.registry.id
+}
+
+output "api_gateway_execution_arn" {
+  description = "API Gateway execution ARN (shared across modules)"
+  value       = aws_apigatewayv2_api.registry.execution_arn
+}

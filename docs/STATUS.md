@@ -116,8 +116,8 @@
 
 ### Multi-Family Architecture (Stage 1)
 
-- Per-family database architecture: each family gets its own IndexedDB (`gp-family-finance-{familyId}`)
-- Registry database (`gp-finance-registry`): stores families, user mappings, global settings
+- Per-family database architecture: each family gets its own IndexedDB (`beanies-data-{familyId}`)
+- Registry database (`beanies-registry`): stores families, user mappings, global settings
 - Family context orchestrator (`familyContext.ts`) and Pinia store (`familyContextStore.ts`)
 - Legacy migration service: auto-migrates single-DB data to per-family DB on first boot
 - Global settings split from per-family settings (theme, language, exchange rates are device-level)

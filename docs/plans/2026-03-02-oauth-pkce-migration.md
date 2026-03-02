@@ -105,7 +105,7 @@ getGoogleRefreshToken(familyId): Promise<string | null>
 clearGoogleRefreshToken(familyId): Promise<void>
 ```
 
-Uses existing `gp-finance-file-handles` database + `handles` store (same pattern as `storeProviderConfig`).
+Uses the `beanies-file-handles` database + `handles` store (same pattern as `storeProviderConfig`).
 
 ### Step 7: Frontend — OAuth callback page + route
 
