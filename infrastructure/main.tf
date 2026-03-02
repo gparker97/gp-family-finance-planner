@@ -50,3 +50,13 @@ module "registry" {
   }
 }
 
+module "oauth" {
+  source = "./modules/oauth"
+
+  app_name                  = var.app_name
+  environment               = var.environment
+  google_client_secret      = var.google_client_secret
+  api_gateway_id            = module.registry.api_gateway_id
+  api_gateway_execution_arn = module.registry.api_gateway_execution_arn
+}
+

@@ -42,3 +42,10 @@ output "registry_lambda_name" {
   value       = module.registry.lambda_function_name
 }
 
+# ── OAuth outputs ────────────────────────────────────────────────────────────
+
+output "oauth_lambda_name" {
+  description = "OAuth Lambda function name"
+  value       = module.oauth.lambda_function_name
+}
+

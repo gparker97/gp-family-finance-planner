@@ -33,3 +33,9 @@ variable "registry_api_key" {
   type        = string
   sensitive   = true
 }
+
+variable "google_client_secret" {
+  description = "Google OAuth client secret for token exchange"
+  type        = string
+  sensitive   = true
+}

@@ -1,7 +1,7 @@
 # Project Status
 
 > **Last updated:** 2026-03-02
-> **Updated by:** Claude (Automerge foundation #110)
+> **Updated by:** Claude (Family key encryption #111, OAuth PKCE plan #112)
 
 ## Current Phase
 
@@ -30,6 +30,7 @@
 - Toast notification system (`useToast.ts` + `ToastContainer.vue`) — error/success/warning/info toasts
 - Store action helper (`wrapAsync()`) — centralized try/catch/finally for all store CRUD operations
 - Node.js 24 across all CI/CD workflows and local development
+- Family key encryption service: AES-256-GCM family key with AES-KW per-member wrapping, invite link service, v4.0 beanpod file format types, QR code utility, shared encoding helpers (#111)
 
 ### UI Components
 
@@ -115,8 +116,8 @@
 
 ### Multi-Family Architecture (Stage 1)
 
-- Per-family database architecture: each family gets its own IndexedDB (`gp-family-finance-{familyId}`)
-- Registry database (`gp-finance-registry`): stores families, user mappings, global settings
+- Per-family database architecture: each family gets its own IndexedDB (`beanies-data-{familyId}`)
+- Registry database (`beanies-registry`): stores families, user mappings, global settings
 - Family context orchestrator (`familyContext.ts`) and Pinia store (`familyContextStore.ts`)
 - Legacy migration service: auto-migrates single-DB data to per-family DB on first boot
 - Global settings split from per-family settings (theme, language, exchange rates are device-level)
@@ -609,8 +610,8 @@ Major data layer migration from IndexedDB + file-based sync to Automerge CRDT + 
 **Phase 1 — Foundation (parallelizable):**
 
 - [x] #110 — Automerge CRDT document service and repository factory
-- [ ] #111 — Family key encryption, wrapping, and invite link service
-- [ ] #112 — Google Drive OAuth PKCE migration (replaces GIS implicit grant)
+- [x] #111 — Family key encryption, wrapping, and invite link service (PR #121)
+- [ ] #112 — Google Drive OAuth PKCE migration (replaces GIS implicit grant) — plan committed on `feat/112-oauth-pkce`, implementation next
 
 **Phase 2 — Core Migration:**
 
