@@ -1,7 +1,7 @@
 # Project Status
 
 > **Last updated:** 2026-03-03
-> **Updated by:** Claude (#113 data layer switchover complete, merged to feature/automerge-migration)
+> **Updated by:** Claude (#114 auth & family key flows — testing on feature/114-auth-family-key-flows)
 
 ## Current Phase
 
@@ -577,6 +577,21 @@ Comprehensive review of 243 source files (~49,700 lines) identified and consolid
 - All sub-issues closed: #8, #9, #10, #11, #12, #13, #14
 
 ## In Progress
+
+### Auth & Family Key Flows (Issue #114) — Testing
+
+- **Branch:** `feature/114-auth-family-key-flows` (off `feature/automerge-migration`)
+- **Status:** Implementation complete, manual testing in progress before merge
+- Replaced pod encryption password with automatic family key (AES-256-GCM) wrapping per member
+- Invite links now include crypto token — joiners can decrypt the file without knowing any password
+- FamilyPage generates token-wrapped invite packages (24h expiry) on link creation
+- JoinPodView redeems invite tokens automatically, skipping the decrypt password modal
+- Trusted device sign-in: tap your bean to sign in without a password (no password form on trusted devices)
+- Fixed family ID mismatch validation in fresh browsers (uses V4 envelope ID)
+- Fixed cloud load error UX (no raw API errors, contextual fallback messaging)
+- syncStore: `addInvitePackage()`, `decryptPendingFileWithKey()` helpers
+- authStore: `signInTrusted()` for passwordless login on trusted devices
+- 613 tests pass, build clean
 
 - **Multi-Family with File-Based Auth** — Per-family databases, file-based authentication (Cognito removed), passkey/biometric login implemented
 
