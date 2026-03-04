@@ -1,7 +1,7 @@
 # Project Status
 
-> **Last updated:** 2026-03-03
-> **Updated by:** Claude (#114 auth & family key flows — testing on feature/114-auth-family-key-flows)
+> **Last updated:** 2026-03-04
+> **Updated by:** Claude (V4 sign-in modal UX improvements)
 
 ## Current Phase
 
@@ -591,7 +591,13 @@ Comprehensive review of 243 source files (~49,700 lines) identified and consolid
 - Fixed cloud load error UX (no raw API errors, contextual fallback messaging)
 - syncStore: `addInvitePackage()`, `decryptPendingFileWithKey()` helpers
 - authStore: `signInTrusted()` for passwordless login on trusted devices
-- 613 tests pass, build clean
+- Simplified join flow: removed manual family code/UUID entry, magic link only
+- Invite modal shows only magic link (family code section removed)
+- JoinPodView shows "How to join" instructions with beanie family image when opened without URL params
+- Cleaned up 11 unused i18n strings
+- V4 decrypt modal UX: "Unlock your pod" → "Sign In to {familyName}" with beanie icon, member count hint, inline form (no modal overlay on storage cards)
+- Auto-sign-in after password decrypt: `decryptPendingFile()` returns `memberId`, LoadPodView calls `authStore.signIn()` → skips PickBeanView → navigates to /nook
+- 622 tests pass, build clean
 
 - **Multi-Family with File-Based Auth** — Per-family databases, file-based authentication (Cognito removed), passkey/biometric login implemented
 
@@ -783,7 +789,7 @@ A v7 UI framework proposal has been uploaded to `docs/brand/beanies-ui-framework
 
 ## Known Issues
 
-_(None currently tracked)_
+- **Single-family re-login shows LoadPodView instead of auto-decrypting:** When a single family exists and the user clicks "Sign In" after sign-out, `tryAutoDecrypt` fails because `cacheFamilyKey()` only stores the key on trusted devices (`isTrustedDevice === true`). On non-trusted devices, the cached family key is empty, so auto-decrypt falls through to the LoadPodView password form. Needs investigation: either always cache the family key after explicit password entry, or prompt for trusted device earlier in the flow.
 
 ## Decision Log
 
