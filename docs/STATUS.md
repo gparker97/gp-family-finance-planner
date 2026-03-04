@@ -1,7 +1,7 @@
 # Project Status
 
-> **Last updated:** 2026-03-04
-> **Updated by:** Claude (CRDT merge safety tests implemented)
+> **Last updated:** 2026-03-05
+> **Updated by:** Claude (implement permission roles — finance, activities, admin)
 
 ## Current Phase
 
@@ -20,7 +20,7 @@
 - Unit test infrastructure (Vitest with happy-dom)
 - Linting (ESLint + Prettier + Stylelint + Husky pre-commit hooks)
 - File-based sync via File System Access API (with encryption support)
-- Google Drive cloud storage integration (StorageProvider abstraction, OAuth PKCE with Lambda proxy, Drive REST API, offline queue, file picker, reconnect toast, scope validation, cross-account folder cache fix) — ADR-016, #112
+- Google Drive cloud storage integration (StorageProvider abstraction, OAuth PKCE with Lambda proxy, Drive REST API, offline queue, file picker, reconnect toast, scope validation, cross-account folder cache fix, PWA re-consent loop fix with persistent storage + localStorage token fallback) — ADR-016, #112
 - OAuth Lambda proxy (`beanies-family-oauth-prod`) — stateless token exchange & refresh at `api.beanies.family/oauth/google/*`, keeps client_secret server-side
 - IndexedDB naming convention: `beanies-data-{familyId}`, `beanies-registry`, `beanies-file-handles` (migrated from `gp-finance-*`)
 - Cross-device sync hardening: record-level merge (v3.0 file format), deletion tombstones, 6 sync bug fixes — ADR-017
@@ -33,6 +33,7 @@
 - Store action helper (`wrapAsync()`) — centralized try/catch/finally for all store CRUD operations
 - Node.js 24 across all CI/CD workflows and local development
 - Family key encryption service: AES-256-GCM family key with AES-KW per-member wrapping, invite link service, v4.0 beanpod file format types, QR code utility, shared encoding helpers (#111)
+- Permission roles: `canViewFinances`, `canEditActivities`, `canManagePod` fields on FamilyMember, `usePermissions()` composable, route guards, sidebar/mobile nav filtering, readOnly modal pattern, NoAccessPage (#132)
 
 ### UI Components
 
@@ -549,6 +550,12 @@ Comprehensive review of 243 source files (~49,700 lines) identified and consolid
 
 ### Recent Fixes
 
+- **Google OAuth re-consent loop fix** — Three-layer fix preventing PWA users from being forced to re-consent on every page refresh:
+  1. `getValidToken()` and 401 fallbacks in `googleDriveProvider.ts` now pass `forceConsent: true` when no refresh token exists (Google only issues refresh tokens with `prompt=consent`)
+  2. `App.vue` requests `navigator.storage.persist()` on startup to prevent browser eviction of IndexedDB
+  3. Refresh tokens dual-written to IndexedDB + localStorage as defense-in-depth against storage eviction (iOS Safari 7-day policy, PWA storage pressure)
+  - New `hasRefreshToken()` export in `googleAuth.ts` for cross-module access
+  - Plan: `docs/plans/2026-03-04-fix-oauth-reconsent-loop.md`
 - **Multi-family isolation hardening** — Fixed cross-family data leakage when authenticated user's familyId could not be resolved:
   - Added cached session familyId as 4th fallback in auth resolution chain (JWT → getUserAttributes → registry → cached session)
   - Authenticated users no longer fall back to `lastActiveFamilyId` (which could belong to a different user)
