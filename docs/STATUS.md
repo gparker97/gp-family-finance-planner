@@ -1,7 +1,7 @@
 # Project Status
 
 > **Last updated:** 2026-03-05
-> **Updated by:** Claude (income-to-goal linking, currency dropdown DRY refactor)
+> **Updated by:** Claude (Nook card click-to-edit modals)
 
 ## Current Phase
 
@@ -52,7 +52,7 @@
 - Settings page (currency, theme, sync, encryption)
 - First-run setup wizard
 - Multi-currency display with global display currency selector
-- Family Nook home screen (`/nook`) — greeting, status toast, family beans row, schedule cards, inline todo widget with view/edit modals, milestones, piggy bank card, recent activity feed. Overdue task detection with orange pill + ⏰ indicator. Task description preview (2-line clamp) on cards. `/` redirects to `/nook`
+- Family Nook home screen (`/nook`) — greeting, status toast, family beans row, schedule cards (merged todos + planner activities with click-to-edit), inline todo widget with view/edit modals, milestones, piggy bank card, recent activity feed (click-to-edit todos + transactions). Overdue task detection with orange pill + ⏰ indicator. Task description preview (2-line clamp) on cards. `/` redirects to `/nook`
 
 ### Beanie Brand Asset Icons
 
@@ -567,6 +567,13 @@ Comprehensive review of 243 source files (~49,700 lines) identified and consolid
 - Restyled `GoalModal` currency dropdown to match Transaction/Account inline pattern (replaced separate `BaseSelect`)
 - Net -64 lines across all modals
 
+### Nook Card Click-to-Edit Modals
+
+- **ScheduleCards** — merged planner activities (from `activityStore.upcomingActivities`) into Today and This Week cards alongside todos; unified `ScheduleItem` type with click-to-edit via emits
+- **RecentActivityCard** — added click handlers emitting `open-todo` / `open-transaction` for inline editing
+- **FamilyNookPage** — wired `TodoViewEditModal`, `ActivityModal`, and `TransactionModal` with save/delete handlers (edit-only, no create); all card items open modals directly on the Nook page without navigation
+- **NookTodoWidget reactivity fix** — changed `selectedTodo: ref<TodoItem | null>` to `selectedTodoId: ref<string | null>` + computed lookup from `todoStore.todos` (same pattern as FamilyTodoPage)
+
 ### Recent Fixes
 
 - **Google OAuth re-consent loop fix** — Three-layer fix preventing PWA users from being forced to re-consent on every page refresh:
@@ -869,3 +876,4 @@ A v7 UI framework proposal has been uploaded to `docs/brand/beanies-ui-framework
 | 2026-03-05 | Income-to-goal linking                                      | Income transactions allocate percentage or fixed amount to a goal; guardrail caps allocation at remaining goal amount; flat fields on Transaction/RecurringItem (mirrors activityId pattern)    |
 | 2026-03-05 | EntityLinkDropdown generalization                           | Extracted ActivityLinkDropdown mechanism into generic EntityLinkDropdown; same UI, prop-driven data source; ActivityLinkDropdown becomes thin wrapper                                           |
 | 2026-03-05 | CurrencyAmountInput reusable component                      | Inline currency dropdown + AmountInput extracted from 4 modals into single component; net -64 lines; added currency selector to ActivityModal                                                   |
+| 2026-03-05 | Nook card click-to-edit modals                              | Schedule cards merge planner activities with todos; all Nook cards (Schedule, Recent Activity, Todo Widget) open inline edit modals — no page navigation. NookTodoWidget reactivity bug fixed   |
