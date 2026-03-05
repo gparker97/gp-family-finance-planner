@@ -1,23 +1,23 @@
 ---
-name: deploy-prod
-description: Commit, push, monitor CI, and deploy to production
+name: deploy-prod-auto
+description: Auto-approved commit, push, CI monitor, and deploy to production
 disable-model-invocation: true
 ---
 
-# Deploy to Production
+# Deploy to Production (Auto-Approved)
 
-This skill commits all pending changes, pushes to `main`, monitors CI pipelines, fixes any failures, and deploys to production once everything is green.
+This skill commits all pending changes, pushes to `main`, monitors CI pipelines, fixes any failures, and deploys to production — all without pausing for user confirmation.
 
-**CRITICAL:** This is a destructive, externally-visible action. Confirm each major step with the user before proceeding.
+**All actions are pre-approved:** commit, push, and deploy will proceed automatically. The only reason to stop is an unrecoverable failure after 3 fix attempts.
 
 ---
 
 ## Step 1: Commit & Push
 
 1. Run `git status` and `git diff` to review all pending changes.
-2. Present a summary of changes to the user and draft a commit message.
+2. Draft a commit message based on the changes (follow the repo's commit style).
 3. Stage relevant files (never stage `.env`, credentials, or secrets).
-4. Commit with the drafted message (get user approval on the message first).
+4. Commit immediately with the drafted message — no need to confirm with the user.
 5. Push to `main`. The pre-push hook (`npm run test:run`) will run automatically.
 6. If pre-push tests fail:
    - Analyze the failure output.
@@ -50,25 +50,24 @@ Monitor both workflows:
    - Analyze the error and fix the root cause.
    - Commit the fix, push, and restart monitoring from the beginning of Step 2.
    - Maximum 3 fix attempts. If still failing after 3 rounds, stop and report the issue to the user.
-4. If both workflows pass, proceed to Step 3.
+4. If both workflows pass, proceed immediately to Step 3.
 
 ## Step 3: Deploy
 
-Once both CI and Security workflows show green:
+Once both CI and Security workflows show green, deploy immediately — no user confirmation needed:
 
-1. Confirm with the user: "CI and Security are green. Ready to deploy to production?"
-2. Only after explicit user approval, trigger the deploy:
+1. Trigger the deploy:
    ```
    gh workflow run deploy.yml
    ```
-3. Monitor the deploy workflow:
+2. Monitor the deploy workflow:
    ```
    gh run list --workflow=deploy.yml --limit=1
    gh run watch <run-id>
    ```
-4. The deploy workflow has its own gate that re-verifies CI/Security passed for the commit.
-5. If deploy fails, fetch logs and report to the user. Do not retry automatically.
-6. On success, report: deployed commit SHA, deploy duration, and the production URL.
+3. The deploy workflow has its own gate that re-verifies CI/Security passed for the commit.
+4. If deploy fails, fetch logs and report to the user. Do not retry automatically.
+5. On success, report: deployed commit SHA, deploy duration, and the production URL.
 
 ---
 
@@ -97,8 +96,6 @@ gh auth login
 
 - **Never use `--no-verify` or `--force`** on any git command.
 - **Never skip or silence CI failures** — always fix the root cause.
-- **Never trigger `deploy.yml` without explicit user confirmation** that CI is green.
 - **Never amend published commits** — always create new fix commits.
-- **Stop and ask the user** if anything unexpected happens (merge conflicts, unknown failures, flaky tests).
+- **Stop and ask the user only** if there is an unrecoverable failure after 3 fix attempts, or something truly unexpected (merge conflicts, unknown infrastructure failures).
 - The deploy workflow name is exactly `deploy.yml` (display name: "Deploy beanies PROD").
-- For a fully autonomous deploy without confirmation prompts, use `/deploy-prod-auto` instead.
