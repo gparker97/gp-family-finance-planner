@@ -1,7 +1,7 @@
 # Project Status
 
-> **Last updated:** 2026-03-05
-> **Updated by:** Claude (Nook card click-to-edit modals)
+> **Last updated:** 2026-03-06
+> **Updated by:** Claude (Join flow cross-browser fixes + Google Picker)
 
 ## Current Phase
 
@@ -20,7 +20,7 @@
 - Unit test infrastructure (Vitest with happy-dom)
 - Linting (ESLint + Prettier + Stylelint + Husky pre-commit hooks)
 - File-based sync via File System Access API (with encryption support)
-- Google Drive cloud storage integration (StorageProvider abstraction, OAuth PKCE with Lambda proxy, Drive REST API, offline queue, file picker, reconnect toast, scope validation, cross-account folder cache fix, PWA re-consent loop fix with persistent storage + localStorage token fallback) — ADR-016, #112
+- Google Drive cloud storage integration (StorageProvider abstraction, OAuth PKCE with Lambda proxy, Drive REST API, offline queue, file picker, Google Picker API for join flow, email sharing via Drive Permissions API, reconnect toast, scope validation, cross-account folder cache fix, PWA re-consent loop fix with persistent storage + localStorage token fallback) — ADR-016, #112
 - OAuth Lambda proxy (`beanies-family-oauth-prod`) — stateless token exchange & refresh at `api.beanies.family/oauth/google/*`, keeps client_secret server-side
 - IndexedDB naming convention: `beanies-data-{familyId}`, `beanies-registry`, `beanies-file-handles` (migrated from `gp-finance-*`)
 - Cross-device sync hardening: record-level merge (v3.0 file format), deletion tombstones, 6 sync bug fixes — ADR-017
@@ -576,6 +576,11 @@ Comprehensive review of 243 source files (~49,700 lines) identified and consolid
 
 ### Recent Fixes
 
+- **Join flow cross-browser decrypt fix** — When a new member joined via invite link and created a password, the `joinFamily()` flow only stored a `passwordHash` in the Automerge doc but never created a `wrappedKey` entry in the V4 envelope. This meant password-based file decryption failed on different browsers/devices (e.g. Safari PWA after joining via Chrome on iOS, where storage is completely isolated). Fix: added `wrapFamilyKeyForMember()` to syncStore that derives an AES-KW wrapping key from the password and wraps the family key, called from `JoinPodView.handleCreatePassword()` before syncing.
+- **Envelope merge race condition fix** — `fetchAndMergeRemote()` in `doSave()` was doing wholesale `currentEnvelope = remoteEnvelope` replacement, which could overwrite locally-added `inviteKeys`, `wrappedKeys`, and `passkeyWrappedKeys` when a prior auto-save wrote a version without them. Fix: merge local keys into remote envelope before assignment.
+- **Family key cache on join fix** — `cacheFamilyKey()` silently returned when device was not trusted, causing data loss after page refresh or PWA install following a successful join. Fix: added `force` option to `cacheFamilyKey()` and force-cache during join/decrypt flows. Also fixed `App.vue` to redirect to `/welcome` when auto-decrypt fails instead of falling through to an empty Automerge doc.
+- **Google Picker API for join flow** — When `drive.file` scope can't read a file shared by another user (returns 404), the join flow now shows a Google Picker button to let the invitee select the shared `.beanpod` file from their Drive (grants `drive.file` access). Includes `drivePicker.ts` service, `google-picker.d.ts` type declarations, and picker fallback UI in `JoinPodView.vue`. Plan: `docs/plans/2026-03-05-google-picker-invite-email-sharing.md`.
+- **Email sharing in invite modal** — Optional email field in the invite modal (`FamilyPage.vue`) lets the pod owner share the `.beanpod` file with a family member's Google account directly via the Drive Permissions API. Uses `shareFileWithEmail()` in `driveService.ts`.
 - **Google OAuth re-consent loop fix** — Three-layer fix preventing PWA users from being forced to re-consent on every page refresh:
   1. `getValidToken()` and 401 fallbacks in `googleDriveProvider.ts` now pass `forceConsent: true` when no refresh token exists (Google only issues refresh tokens with `prompt=consent`)
   2. `App.vue` requests `navigator.storage.persist()` on startup to prevent browser eviction of IndexedDB
