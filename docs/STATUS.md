@@ -1,7 +1,7 @@
 # Project Status
 
-> **Last updated:** 2026-03-08
-> **Updated by:** Claude (Passkey compat fix, join/load loading spinners deployed)
+> **Last updated:** 2026-03-09
+> **Updated by:** Claude (Recurring scope UX improvements, Google Drive resilience fixes)
 
 ## Current Phase
 
@@ -574,6 +574,22 @@ Comprehensive review of 243 source files (~49,700 lines) identified and consolid
 - **RecentActivityCard** — added click handlers emitting `open-todo` / `open-transaction` for inline editing
 - **FamilyNookPage** — wired `TodoViewEditModal`, `ActivityModal`, and `TransactionModal` with save/delete handlers (edit-only, no create); all card items open modals directly on the Nook page without navigation
 - **NookTodoWidget reactivity fix** — changed `selectedTodo: ref<TodoItem | null>` to `selectedTodoId: ref<string | null>` + computed lookup from `todoStore.todos` (same pattern as FamilyTodoPage)
+
+### Recurring Activity/Transaction Scope UX (2026-03-09)
+
+- **Scope modal moved to save time** — "This only / This & all future / All occurrences" modal now appears after the user clicks Save (not before opening the edit modal). Applies to both recurring activities and projected transactions. Users can see what they're changing before deciding scope.
+- **Occurrence date banner** — Edit modals for recurring activities and projected transactions show the specific occurrence date being edited (e.g. "Editing occurrence on Mon, Mar 16, 2026").
+- **Inline edit scope handling** — `ActivityViewEditModal` uses `scopeResolved` flag so scope is only asked once per editing session. After "this only" materialization, the override has `recurrence: 'none'` so scope check is naturally skipped.
+- **`useActivityScopeEdit` composable** — Shared between `FamilyPlannerPage` and `FamilyNookPage` to eliminate duplicated scope logic (DRY).
+- **Automerge proxy fix** — `splitActivity` and `materializeOverride` now use `JSON.parse(JSON.stringify())` to deep-clone proxy objects, fixing `'get' on proxy: Symbol(_am_meta)'` errors.
+- **`materializeOverride` spread order fix** — `recurrence: 'none'` is now applied after `...overrides` spread to prevent form data from overwriting it.
+- Plan: `docs/plans/2026-03-09-per-instance-activity-overrides.md`
+
+### Google Drive Resilience Fixes (2026-03-09)
+
+- **5xx retry with exponential backoff** — `GoogleDriveProvider` now retries on 503/5xx errors up to 3 times with exponential backoff (1s, 2s, 4s). After exhausting retries on write, queues to offline flush instead of throwing unhandled.
+- **Init file polling suppression** — `deferPolling()` / `startDeferredPolling()` prevents `setupAutoSync` from starting file polling until after `processRecurringItems` completes, breaking the init mutation → file poll → reload → more mutations cascade.
+- **30-second init timeout** — If `loadFamilyData` takes longer than 30s (due to Drive API issues), the spinner is dismissed so the app is usable. Data continues loading in the background.
 
 ### Recent Fixes
 
