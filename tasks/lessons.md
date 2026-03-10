@@ -221,3 +221,21 @@ if (activeFamilyId && activeFamilyId !== familyCtx.activeFamilyId) {
 2. If it uses outdated patterns (old component library, deprecated wrappers, missing composables), modernize it first or flag the discrepancy
 3. Never assume a component is up-to-date just because it works — compare against the canonical pattern (e.g., `TransactionModal.vue` for form modals)
 4. When a plan references a file to modify, treat "read and verify current state" as step zero
+
+## 13. Dual-state desync: syncStore vs syncService family key
+
+**Date:** 2026-03-10
+**Context:** Data loss after tab idle/sleep — saves silently failing with "no family key or envelope"
+
+**Pattern:** The family encryption key exists in TWO places: `syncStore.familyKey` (Vue shallowRef) and `syncService.currentFamilyKey` (module-level variable). The syncStore ref is used for decryption (reads), the syncService variable is used for encryption (writes, cache). If any code path clears the syncService variable without clearing the store ref, reads succeed but all writes silently fail — data appears to work but is never persisted.
+
+**Root cause:** `SettingsPage.vue` called `syncStore.initialize()` on every mount. `syncService.initialize()` calls `reset()` which wipes `currentFamilyKey`. The syncStore Vue ref was NOT cleared. File polling read and decrypted successfully (using the Vue ref), but saves, IndexedDB cache writes, and save-on-hide/unload all failed (using the cleared service variable). On page refresh, all unsaved data was permanently lost.
+
+**Compounding factor:** `loadFromFile()` only called `syncService.setEnvelope()` after decryption — it never called `syncService.setFamilyKey()`. So even when polling read the file every 10 seconds, the missing service key was never restored.
+
+**Rule:**
+
+1. **Never re-initialize sync when already active** — `syncService.initialize()` must skip `reset()` if the key/provider/family are already valid for the current family
+2. **Always sync both key locations** — any path that decrypts with `familyKey.value` must call `syncService.setFamilyKey()` (not just `setEnvelope()`) to keep the service in sync
+3. **Save handlers must recover from desync** — `beforeunload` and `visibilitychange` → hidden handlers should restore the service key from the store ref before saving
+4. **Broader principle:** When the same state is mirrored in two locations (Vue ref + module variable), every mutation path must update both. Silent divergence causes data loss that's invisible until refresh

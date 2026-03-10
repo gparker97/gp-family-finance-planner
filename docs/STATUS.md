@@ -1,7 +1,7 @@
 # Project Status
 
-> **Last updated:** 2026-03-09
-> **Updated by:** Claude (Recurring scope UX improvements, Google Drive resilience fixes)
+> **Last updated:** 2026-03-10
+> **Updated by:** Claude (Critical data loss fix — syncService family key desync after Settings page visit)
 
 ## Current Phase
 
@@ -824,6 +824,7 @@ A v7 UI framework proposal has been uploaded to `docs/brand/beanies-ui-framework
 ## Known Issues
 
 - **Single-family re-login shows LoadPodView instead of auto-decrypting:** When a single family exists and the user clicks "Sign In" after sign-out, `tryAutoDecrypt` fails because `cacheFamilyKey()` only stores the key on trusted devices (`isTrustedDevice === true`). On non-trusted devices, the cached family key is empty, so auto-decrypt falls through to the LoadPodView password form. Needs investigation: either always cache the family key after explicit password entry, or prompt for trusted device earlier in the flow.
+- ~~**Data loss after tab idle/sleep — saves fail silently:** After waking from sleep and visiting Settings to check last-saved timestamp, all subsequent saves failed with "no family key or envelope". Data created after visiting Settings was lost on refresh.~~ **Fixed 2026-03-10** — Root cause: `SettingsPage.vue` called `syncStore.initialize()` on mount, which called `syncService.reset()` clearing the encryption key from the sync service (but not the Vue ref). Four-layer fix: (1) removed redundant init from SettingsPage, (2) `syncService.initialize()` skips destructive re-init when already active for same family, (3) `loadFromFile()` now calls `setFamilyKey()` instead of `setEnvelope()` to restore key on every file poll, (4) save-on-hide/unload handlers recover the key from the store ref before saving.
 - ~~**Google Drive new account registration fails:** Two errors: (1) "authorization scope was not enough" — granular consent lets users deselect scopes, (2) "File not found" — global folder cache reuses a previous account's folder ID.~~ **Fixed 2026-03-04** — clear folder cache + force consent in `createNew()`, validate `drive.file` scope after token exchange, clear cache on auth failure.
 
 ## Decision Log
