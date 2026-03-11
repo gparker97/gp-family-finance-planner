@@ -1,7 +1,7 @@
 # Project Status
 
 > **Last updated:** 2026-03-11
-> **Updated by:** Claude (Activity modal UX improvements, sign-out modal fixes)
+> **Updated by:** Claude (Multi-owner activities/todos, MemberChip extraction, beanies-plan skill)
 
 ## Current Phase
 
@@ -591,6 +591,25 @@ Comprehensive review of 243 source files (~49,700 lines) identified and consolid
 - **5xx retry with exponential backoff** — `GoogleDriveProvider` now retries on 503/5xx errors up to 3 times with exponential backoff (1s, 2s, 4s). After exhausting retries on write, queues to offline flush instead of throwing unhandled.
 - **Init file polling suppression** — `deferPolling()` / `startDeferredPolling()` prevents `setupAutoSync` from starting file polling until after `processRecurringItems` completes, breaking the init mutation → file poll → reload → more mutations cascade.
 - **30-second init timeout** — If `loadFamilyData` takes longer than 30s (due to Drive API issues), the spinner is dismissed so the app is usable. Data continues loading in the background.
+
+### Multi-Owner Activities & Todos (2026-03-11)
+
+- **Multi-assignee support** — Activities and todos now support multiple owners via new `assigneeIds: UUID[]` field alongside legacy `assigneeId` (backward compatible). Activities require 1+ owners, todos allow 0+
+- **Normalizer pattern** — `normalizeAssignees()` and `toAssigneePayload()` in `src/utils/assignees.ts` are the single source of truth for all assignee reads/writes. All consumers call the normalizer, never read `assigneeId` directly
+- **`MemberChip.vue` extraction** — Reusable presentational component (`sm`/`md` size variants) replacing 5+ duplicated inline member-chip patterns across `DayAgendaSidebar`, `UpcomingActivities`, `TodoPreview`, `TodoItemCard`, `NookTodoWidget`, `ActivityViewEditModal`, `TodoViewEditModal`
+- **Multi-select UX** — `FamilyChipPicker` switched to `mode="multi"` for assignees with confirm (✓) / cancel (✕) buttons in inline edit slots. Dropoff/pickup stay single-select with auto-save + cancel button
+- **Data layer updates** — `useMemberFiltered` composable widened to accept `string | string[] | undefined | null` (array-aware filtering). `useCriticalItems` shows notifications for all assignees. Activity and todo repositories use `normalizeAssignees().includes()` for queries
+- **All consuming components updated** — 23 files modified across stores, composables, repositories, modals, list views, pages, and quick-add flows
+- **Tests** — 9 new unit tests for normalizer/payload builder, 4 new `useCriticalItems` multi-assignee tests, 3 new `activityStore` filter tests, 12 E2E planner tests updated to select assignee (required by new `canSave` validation)
+- Plan: `docs/plans/2026-03-11-multi-owner-activities-todos.md`
+
+### beanies-plan Skill (2026-03-11)
+
+- **`.claude/skills/beanies-plan/SKILL.md`** — Standardized plan & issue creation skill for consistent plan documents and GitHub issues with full context preservation
+- 5-phase workflow: Gather & Clarify → Draft Plan → Iterate Until Approved → Save Plan → Create GitHub Issue (optional)
+- Captures all user prompts verbatim (initial + follow-ups + redirections) as a permanent prompt log
+- Enforces plan document format, GitHub issue format with 2-way links, and project labeling conventions
+- Always asks whether to create a GitHub issue or implement directly
 
 ### Recent Improvements (2026-03-11)
 
