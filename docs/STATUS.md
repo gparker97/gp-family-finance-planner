@@ -1,7 +1,7 @@
 # Project Status
 
-> **Last updated:** 2026-03-10
-> **Updated by:** Claude (Landing page implementation from mockup)
+> **Last updated:** 2026-03-11
+> **Updated by:** Claude (Activity modal UX improvements, sign-out modal fixes)
 
 ## Current Phase
 
@@ -591,6 +591,22 @@ Comprehensive review of 243 source files (~49,700 lines) identified and consolid
 - **5xx retry with exponential backoff** — `GoogleDriveProvider` now retries on 503/5xx errors up to 3 times with exponential backoff (1s, 2s, 4s). After exhausting retries on write, queues to offline flush instead of throwing unhandled.
 - **Init file polling suppression** — `deferPolling()` / `startDeferredPolling()` prevents `setupAutoSync` from starting file polling until after `processRecurringItems` completes, breaking the init mutation → file poll → reload → more mutations cascade.
 - **30-second init timeout** — If `loadFamilyData` takes longer than 30s (due to Drive API issues), the spinner is dismissed so the app is usable. Data continues loading in the background.
+
+### Recent Improvements (2026-03-11)
+
+- **Activity start+end time display** — All activity time displays (Nook schedule cards, planner sidebar upcoming section) now show both start and end times (e.g. "10:00 - 11:30") instead of just start time
+- **Activity view modal readability overhaul** — Cleaner, more compact layout:
+  - Pick-up/drop-off duties promoted into grey summary box at top (with inline editing)
+  - Date and times consolidated into a single row (3-col for one-off, 2-col for recurring)
+  - Empty optional fields (location, cost, instructor, notes) hidden in view mode — use Edit to add
+  - "Created by" reduced to subtle inline footer text
+  - Edit button moved to modal footer alongside Close (was a full-width row in the body)
+  - BeanieFormModal now supports `footer-start` slot for extra footer actions
+- **Sign-out modal improvements:**
+  - Fixed InfoHintBadge tooltip overflow on mobile (positioned from right edge with viewport max-width)
+  - Both sign-out options now side by side with emojis (🚪 Sign Out / 🗑️ Clear & Sign Out) and equal-height buttons
+  - Cancel moved to subtle text link below
+- **Family member data loss bug fix** — `CreatePodView.handleFinish()` now checks `syncNow()` return value and retries on failure; `OnboardingWizard` skip/finish handlers explicitly save via `syncNow(true)`
 
 ### Recent Fixes
 
