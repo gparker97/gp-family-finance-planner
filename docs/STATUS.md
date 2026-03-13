@@ -1,7 +1,7 @@
 # Project Status
 
-> **Last updated:** 2026-03-12
-> **Updated by:** Claude (Passkey progressive fallback for Android compatibility)
+> **Last updated:** 2026-03-13
+> **Updated by:** Claude (Assets visual polish, E2E ui() string resolver migration)
 
 ## Current Phase
 
@@ -55,6 +55,33 @@
 - Family Nook home screen (`/nook`) — greeting, status toast, family beans row, schedule cards (merged todos + planner activities with view-first modals), inline todo widget with view/edit modals, milestones, piggy bank card, recent activity feed (view-first modals for todos + transactions). Overdue task detection with orange pill + ⏰ indicator. Task description preview (2-line clamp) on cards. `/` redirects to `/nook`
 - Family Hub / Bean Pod (`/family`) — v7 redesign (#73): 3-column layout (sidebar, member cards, quick-info panel), activity-focused member cards (upcoming events, milestones, activity count, tasks — no financial data), role tags ("Parent Bean"/"Little Bean"), Heritage Orange selected state, events this week panel. Calendar removed (→ Family Planner #98)
 - Landing page (`/home`) — full implementation from mockup (#72): hero with hugging beanie mascot + animated headline, 3 floating device screenshots (Nook, Piggy Bank, Planner), trust badges, security section with 6 cards, Greg's full beanies story, animated CTA with celebrating beanies circle, footer with Slack-wired contact form (`VITE_CONTACT_WEBHOOK_URL`), scroll progress bar, IntersectionObserver reveal animations, smooth-scroll anchor navigation, back-to-top button. Scoped CSS (not Tailwind) for pixel-perfect mockup fidelity. Decorative brand character images as low-opacity background accents. E2E tests updated.
+
+### Assets Page Visual Polish (2026-03-13)
+
+- **Stat card subtexts**: All 4 SummaryStatCards on Assets page now show contextual subtitles (asset count, active loan count, "After loan deductions", appreciation %)
+- **Equity progress bar**: Green gradient bar above loan panel showing equity % for assets with loans
+- **Loan panel restructure**: Header row with label + amount side-by-side, 2-column detail grid below
+- **Card stagger animation**: `fade-slide-up` keyframe extracted from GoalsPage to global `style.css` for reuse, cards animate in with 70ms stagger delay
+- **Card hover effects**: `group-hover:scale-[1.08]` on icon, `opacity-0 group-hover:opacity-100` on action dots
+- **Notes quote style**: `border-l-2 border-gray-200 pl-3` left-border quote styling
+- **SummaryStatCard fix**: Subtitle font `text-[10px]` → `text-xs` (CIG min 12px), label/subtitle stacked vertically instead of horizontal to prevent wrapping
+- **InfoHintBadge fix**: Rewrote from `position: absolute` to `<Teleport to="body">` with `position: fixed` to escape `overflow-auto` clipping on `<main>`
+- 4 new translation keys: `assets.equity`, `assets.activeLoans`, `assets.afterLoanDeductions`, `assets.overall`
+- Plan: `docs/plans/2026-03-13-assets-page-visual-polish.md`
+
+### Goals & Assets Page Revamp (2026-03-13)
+
+- **GoalsPage rewrite**: Sectioned layout with group-by toggle (member/priority), encouragement messages, milestone dots, "almost there" glow, achieved goals section
+- **AssetModal extraction**: Extracted ~720 lines of duplicated inline modal forms from AssetsPage into `AssetModal.vue` component
+- **DRY fix**: `persistCustomInstitutionIfNeeded` moved to shared `useInstitutionOptions.ts` composable
+- **SummaryStatCard**: Added `rawValue` prop for non-currency display (goal counts)
+
+### E2E Shared UI String Resolver (2026-03-13)
+
+- **`e2e/helpers/ui-strings.ts`**: Shared resolver that imports `UI_STRINGS` from the app's translation system, so E2E tests reference translation keys instead of hardcoded English strings
+- **ComboboxHelper fix**: Updated constructor to handle both BaseCombobox wrapper (`.relative.space-y-1`) and FormFieldGroup wrapper (`.space-y-2`) using `.or()` pattern
+- **Full migration**: All E2E helpers, page objects, and spec files migrated to use `ui()` — covers auth.ts, AccountsPage, TransactionsPage, AssetsPage, and 8 spec files
+- Strings without matching uiStrings keys (setup flow form labels, brand tagline, beanie-mode assertions) left as-is
 
 ### Beanie Brand Asset Icons
 
